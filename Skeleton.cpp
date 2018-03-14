@@ -33,7 +33,7 @@ namespace Roots
 	//	for (int i = 0; i < numVertices; ++i)
 	//	{
 
-	//		mVerts[i] = Point3d(vertJson[0].asDouble(), vertJson[1].asDouble(), vertJson[2].asDouble());
+	//		mVerts[i] = Point3d(vertJson[0].asfloat(), vertJson[1].asfloat(), vertJson[2].asfloat());
 	//	}
 
 	//	Json::Value edgeJson = json[edgeString];
@@ -52,12 +52,18 @@ namespace Roots
 	//}
 
 	Skeleton::Skeleton()
-		: mVerts(), mEdges(), mNumEdges(), mNumVertices(), mNeighbors() {}
+		: mVerts(), mEdges(), mNumEdges(), mNumVertices(), mNeighbors() 
+	{
+		boundsFound = false;
+		originalCenterSet = false;
+	}
 
 
-	Skeleton::Skeleton(vertList aVertices, std::vector<edgePtrList> aEdges)
+	Skeleton::Skeleton(vertList aVertices, std::vector<edgeList> aEdges)
 		: mVerts(aVertices), mEdges(aEdges)
 	{
+		boundsFound = false;
+		originalCenterSet = false;
 		mNumEdges = 0;
 		mNumVertices = mVerts.size();
 		mNeighbors = std::vector<std::vector<int>>(mVerts.size());
@@ -66,49 +72,179 @@ namespace Roots
 			mNumEdges += mEdges[i].size();
 			for (int j = 0; j < mEdges[i].size(); ++j)
 			{
-				SkeletonEdge *edge = mEdges[i][j];
-				mNeighbors[edge->v0].push_back(edge->v1);
-				mNeighbors[edge->v1].push_back(edge->v0);
+				AddEdge(mEdges[i][j]);
 			}
 		}
+		float cx, cy, cz, r;
+		GetBoundingSphere(cx, cy, cz, r);
 	}
 
-	void Skeleton::LoadFromTextFile(char *filename)
+	Skeleton::Skeleton(std::string filename)
 	{
-		std::ifstream file(filename);
+		boundsFound = false;
+		originalCenterSet = false;
+		std::ifstream in;
+		in.open(filename);
+
+		bool endHeaderReached = false;
+		std::string line;
+		int numEdges = 0, numVerts = 0;
+		Log::out << "Istream operation for skeleton" << std::endl;
+		std::getline(in, line);
+		if (!boost::iequals(line, Skeleton::beginSkeletonString))
+		{
+			Log::out << "The skeleton file lacks the " << Skeleton::beginSkeletonString << "header. Should attempt to load wenzhen style file " << std::endl;
+			std::vector<std::string> words = {};
+			boost::split(words, line, boost::is_any_of(" "));
+			int numVerts, numEdges, numFaces;
+			if (words.size() < 3)
+			{
+				if (words.size() == 2)
+				{
+					numVerts = boost::lexical_cast<int>(words[0]);
+					numEdges = boost::lexical_cast<int>(words[1]);
+				}
+				else
+				{
+					Log::out << "The skeleton header lacks sufficient info to parse.  Ending read attempt" << std::endl;
+					return;
+				}
+			}
+			else
+			{
+				numVerts = boost::lexical_cast<int>(words[0]);
+				numEdges = boost::lexical_cast<int>(words[1]);
+				numFaces = boost::lexical_cast<int>(words[2]);
+			}
+
+
+			LoadWenzhenStyleFile(in, numVerts, numEdges, numFaces);
+
+			return;
+		}
+		Log::out << "This is not being recognized as a wenzhen style file" << std::endl;
+		Log::out << "The first input line is " << line << std::endl;
+		std::vector<std::vector<std::string>> headerInfo;
+		while (!endHeaderReached && !in.eof())
+		{
+			std::getline(in, line);
+			std::vector<std::string> words = {};
+			boost::split(words, line, boost::is_any_of(" "));
+			if (boost::iequals(words[0], Skeleton::endHeaderString))
+			{
+				endHeaderReached = true;
+				break;
+			}
+			headerInfo.push_back(words);
+		}
+		if (in.eof())
+		{
+			Log::out << "End of file reached before end of header info, improper file" << std::endl;
+			return;
+		}
+		for (int i = 0; i < headerInfo.size(); ++i)
+		{
+			std::vector<std::string> headerLine = headerInfo[i];
+			if (boost::iequals(headerLine[0], vertexString))
+			{
+				//handle vertices
+				numVerts = boost::lexical_cast<int>(headerLine[1]);
+				mVerts = vertList(numVerts);
+				for (int i = 0; i < numVerts; ++i)
+				{
+					in >> mVerts[i];
+				}
+			}
+			else if (boost::iequals(headerLine[0], edgeString))
+			{
+				//handle edges
+				numEdges = boost::lexical_cast<int>(headerLine[1]);
+				edgeList edges = edgeList(numEdges);
+				for (int i = 0; i < numEdges; ++i)
+				{
+					in >> edges[i];
+				}
+				for each(SkeletonEdge edge in edges)
+				{
+					AddEdge(edge);
+				}
+			}
+			else
+			{
+				//idk mang
+				//do nothing
+			}
+		}
+		float cx, cy, cz, r;
+		GetBoundingSphere(cx, cy, cz, r);
+	
 	}
 
-	void Skeleton::LoadWenzhenStyleFile(std::istream& in)
+	Skeleton Skeleton::LoadFromTextFile(std::string filename)
 	{
+		
+
+		std::ifstream in;
+		in.open(filename);
+
+		Skeleton result = Skeleton();
+
+		Log::WriteLine("beginning istream for file");
+
+		in >> result;
+
+		Log::WriteLine("End of istream for skeleton file");
+
+		float cx, cy, cz, r;
+		result.GetBoundingSphere(cx, cy, cz, r);
+		return result;
+	}
+
+	void Skeleton::LoadWenzhenStyleFile(std::string filename)
+	{
+		std::ifstream in;
+		in.open(filename);
 		int numVertices, numEdges, numFaces;
 		in >> numVertices >> numEdges >> numFaces;
 
-		mNumEdges = numEdges;
-		mNumVertices = numVertices;
+		LoadWenzhenStyleFile(in, numVertices, numEdges, numFaces);
 
-		mVerts = vertList(numVertices, Point3d());
-		double x, y, z;
-		for (int i = 0; i < numVertices; ++i)
+	}
+
+	void Skeleton::LoadWenzhenStyleFile(std::istream &in, int numVerts, int numEdges, int numFaces)
+	{
+
+		mNumEdges = numEdges;
+		mNumVertices = numVerts;
+		Log::out << "Wenzhen file - vertices: " << mNumVertices << " edges: " << numEdges << std::endl;
+		mVerts = vertList(numVerts, Point3d());
+		
+		float x, y, z;
+		for (int i = 0; i < numVerts; ++i)
 		{
 			in >> x >> y >> z;
 			mVerts[i] = Point3d(x, y, z);
 		}
+		Log::out << "Successfully loaded all " << numVerts << " vertices" << std::endl;
 
-		mEdges = std::vector<edgePtrList>(numVertices, edgePtrList());
+		mEdges = std::vector<edgeList>(numVerts, edgeList());
+		mNeighbors = std::vector<std::vector<int>>(mNumVertices, std::vector<int>());
 		int v0, v1;
-		double *attributes = new double[RootAttributes::NumAttributes];
+		std::vector<float> attributes = std::vector<float>(NumAttributes);
 		for (int i = 0; i < numEdges; ++i)
 		{
+			//std::cout << "Adding edge" << std::endl;
 			in >> v0 >> v1;
-			for (int att = 0; att < RootAttributes::NumAttributes; ++att)
+			for (int att = 0; att < NumAttributes; ++att)
 			{
 				in >> attributes[att];
 			}
-			AddEdge(SkeletonEdge(v0, v1, attributes));
-			//mEdges[v0].push_back(new SkeletonEdge(v0, v1, attributes));
-			std::cout << "Adding edge (" << v0 << " " << v1 << ")" << std::endl;
-			std::cout << "edge added " << (mEdges[v0][mEdges[v0].size() - 1]->v0) << " " << (mEdges[v1][mEdges[v1].size() - 1]->v1) << std::endl;
+			SkeletonEdge toAdd = SkeletonEdge(v0, v1, attributes);
+			AddEdge(toAdd);
+			//std::cout << "Edge added " << std::endl;
 		}
+
+		Log::out << "Successfully loaded all " << numEdges << " edges" << std::endl;
 
 		for (int i = 0; i < mEdges.size(); ++i)
 		{
@@ -117,160 +253,51 @@ namespace Roots
 
 		if (!in.eof())
 		{
-			std::cout << "not all data read, thats kind of wierd " << std::endl;
+			Log::out << "Not all data read from file, that is slightly strange" << std::endl;
 		}
-
+		float cx, cy, cz, r;
+		GetBoundingSphere(cx, cy, cz, r);
 		/////////////////////////////////// TO DO ->  DEAL WITH FACES   ///////////////////////////
 	}
 
-	//void Skeleton::LoadFromJson(Json::Value skelJson)
-	//{
-	//	int numVertices = skelJson[vertexString].size();
-	//	int numEdges = skelJson[edgeString].size();
-
-	//	mNumEdges = numEdges;
-	//	mNumVertices = numVertices;
-
-	//	mVerts = vertList(numVertices, Point3d());
-	//	Json::Value vertJson = skelJson[vertexString];
-	//	for (int i = 0; i < numVertices; ++i)
-	//	{
-
-	//		mVerts[i] = Point3d(vertJson[0].asDouble(), vertJson[1].asDouble(), vertJson[2].asDouble());
-	//	}
-
-	//	Json::Value edgeJson = skelJson[edgeString];
-	//	mEdges = std::vector<edgePtrList>(numVertices, edgePtrList());
-	//	for (int i = 0; i < numEdges; ++i)
-	//	{
-	//		SkeletonEdge edge = SkeletonEdge(edgeJson[i]);
-	//		AddEdge(edge);
-	//		//mEdges[edge.v0].push_back(new SkeletonEdge(edge));
-	//	}
-
-	//	for (int i = 0; i < mEdges.size(); ++i)
-	//	{
-	//		std::sort(mEdges[i].begin(), mEdges[i].end());
-	//	}
-	//}
-
-	//void Skeleton::LoadFromJsonFile(char *filename)
-	//{
-	//	Json::Value skelJson;
-	//	std::ifstream file(filename);
-	//	file >> skelJson;
-	//	LoadFromJson(skelJson);
-	//}
 
 	vertList Skeleton::getVertices()
 	{
 		return mVerts;
 	}
 
-	std::vector<edgePtrList> Skeleton::getEdges()
+	std::vector<edgeList> Skeleton::getEdges()
 	{
 		return mEdges;
 	}
 
 
-	//int Skeleton::FindEdgePos(int v0, int v1)
-	//{
-	//	SkeletonEdge toFind = SkeletonEdge(v0, v1);
-	//	return FindEdgePos(toFind);
-	//}
-	//
-	//int Skeleton::FindEdgePos(SkeletonEdge toFind, bool careAboutAttributes)
-	//{
-	//	int L = 0;
-	//	int R = mEdgePtrs.size();
-	//	int m = (L + R) / 2;
-	//	while (mEdgePtrs[m][0] != toFind)
-	//	{
-	//		m = (L + R) / 2;
-	//		if (mEdgePtrs[m][0] < toFind)
-	//		{
-	//			L = m + 1;
-	//		}
-	//		else if (toFind < mEdgePtrs[m][0])
-	//		{
-	//			R = m - 1;
-	//		}
-	//		if (L > R)
-	//		{
-	//			std::cout << "Edge not found" << std::endl;
-	//			return -1;
-	//		}
-	//	}
-	//
-	//	if (!careAboutAttributes)
-	//	{
-	//		return m;
-	//	}
-	//
-	//	else
-	//	{
-	//		while (!(toFind < mEdgePtrs[m][0] || mEdgePtrs[m][0] < toFind) && m < mEdgePtrs.size())
-	//		{
-	//			if (mEdgePtrs[m][0] == toFind)
-	//			{
-	//				return m;
-	//			}
-	//			++m;
-	//		}
-	//		std::cout << "Edge not found " << std::endl;
-	//		return -1;
-	//	}		
-	//}
-	//
-	////we will never care about attributes here 
-	//int Skeleton::FindNextEdgePos(SkeletonEdge toFind)
-	//{
-	//	int L = 0;
-	//	int R = mEdgePtrs.size() - 1;
-	//	int m = (L + R) / 2;
-	//	while (mEdgePtrs[m][0] != toFind)
-	//	{
-	//		m = (L + R) / 2;
-	//		if (mEdgePtrs[m][0] < toFind)
-	//		{
-	//			L = m + 1;
-	//		}
-	//		else if (toFind < mEdgePtrs[m][0])
-	//		{
-	//			R = m - 1;
-	//		}
-	//		if (L > R)
-	//		{
-	//			if (toFind < mEdgePtrs[R][0])
-	//			{
-	//				return R;
-	//			}
-	//			else
-	//			{
-	//				return L;
-	//			}
-	//		}
-	//	}
-	//	return m ;
-	//}
-	//
-	//edgePtrIter Skeleton::GetPosIter(int pos)
-	//{
-	//	return mEdgePtrs.begin() + pos;
-	//}
-
 	void Skeleton::AddEdge(SkeletonEdge toAdd)
 	{
+		
 		mNeighbors[toAdd.v0].push_back(toAdd.v1);
 		mNeighbors[toAdd.v1].push_back(toAdd.v0);
-		for (int i = 0; i < mEdges[toAdd.v0].size(); ++i)
+		if (toAdd.v0 > mEdges.size())
 		{
-			if ((toAdd.v1 < mEdges[toAdd.v0][i]->v1))
+			return;
+		}
+		if (mEdges[toAdd.v0].size() == 0)
+		{
+			SkeletonEdge addedEdge = SkeletonEdge(toAdd);
+			mEdges[toAdd.v0].push_back(addedEdge);
+		}
+		else
+		{
+			for (int i = 0; i < mEdges[toAdd.v0].size(); ++i)
 			{
-				mEdges[toAdd.v0].insert(mEdges[toAdd.v0].begin() + i, new SkeletonEdge(toAdd));
-				break;
+				if ((toAdd.v1 < mEdges[toAdd.v0][i].v1))
+				{
+					mEdges[toAdd.v0].insert(mEdges[toAdd.v0].begin() + i, SkeletonEdge(toAdd));
+					break;
+				}
 			}
 		}
+		
 	}
 
 
@@ -312,9 +339,8 @@ namespace Roots
 		{
 			for (int i = 0; i < mEdges[v0].size(); ++i)
 			{
-				if (mEdges[v0][i]->operator==(toRemove))
+				if (mEdges[v0][i]==(toRemove))
 				{
-					delete mEdges[v0][i];
 					mEdges[v0].erase(mEdges[v0].begin() + i, mEdges[v0].begin() + i + 1);
 					edgeFound = true;
 				}
@@ -324,9 +350,8 @@ namespace Roots
 		{
 			for (int i = 0; i < mEdges[v0].size(); ++i)
 			{
-				if (mEdges[v0][i]->v1 == v1)
+				if (mEdges[v0][i].v1 == v1)
 				{
-					delete mEdges[v0][i];
 					mEdges[v0].erase(mEdges[v0].begin() + i, mEdges[v0].begin() + i + 1);
 					edgeFound = true;
 				}
@@ -344,16 +369,132 @@ namespace Roots
 		int v0 = std::min(vert0, vert1);
 		int v1 = std::max(vert0, vert1);
 
-		for each(SkeletonEdge* edge in mEdges[v0])
+		for each(SkeletonEdge edge in mEdges[v0])
 		{
-			if(edge->v1 == v0)
+			if(edge.v1 == v0)
 			{
-				return edge;
+				return &edge;
 			}
 		}
 		return nullptr;
 	}
 
+
+	void Skeleton::GetBounds(float &leftX, float &rightX, float &botY, float &topY, float &backZ, float &frontZ)
+	{
+		FindBounds();
+		leftX = mLeftX;
+		rightX = mRightX;
+		botY = mBotY;
+		topY = mTopY;
+		backZ = mBackZ;
+		frontZ = mFrontZ;
+		return;
+
+	}
+
+	void Skeleton::FindBounds()
+	{
+		if (boundsFound)
+		{
+			return;
+		}
+		else
+		{
+			float big = 99999999999;
+			mLeftX = big;
+			mRightX = -big;
+			mBotY = big;
+			mTopY = -big;
+			mBackZ = big;
+			mFrontZ = -big;
+
+			float x, y, z;
+			for each(Point3d p in mVerts)
+			{
+				x = p.x;
+				y = p.y;
+				z = p.z;
+
+				mLeftX = std::min(x, mLeftX);
+				mRightX = std::max(x, mRightX);
+
+				mBotY = std::min(y, mBotY);
+				mTopY = std::max(y, mTopY);
+
+				mBackZ = std::min(z, mBackZ);
+				mFrontZ = std::max(z, mFrontZ);
+
+			}
+
+			boundsFound = true;
+		}
+	}
+
+	void Skeleton::GetBoundingSphere(float &cx, float &cy, float &cz, float &r)
+	{
+		FindBounds();
+		std::vector<Point3d> corners = {};
+		corners.push_back(Point3d(mLeftX, mBotY, mBackZ));
+		corners.push_back(Point3d(mLeftX, mBotY, mFrontZ));
+		corners.push_back(Point3d(mLeftX, mTopY, mBackZ));
+		corners.push_back(Point3d(mLeftX, mTopY, mFrontZ));
+		corners.push_back(Point3d(mRightX, mBotY, mBackZ));
+		corners.push_back(Point3d(mRightX, mBotY, mFrontZ));
+		corners.push_back(Point3d(mRightX, mTopY, mBackZ));
+		corners.push_back(Point3d(mRightX, mTopY, mFrontZ));
+
+		float maxDist = 0.0;
+		float maxCX=0, maxCY=0, maxCZ=0, maxR=0;
+		for (int i = 0; i < corners.size(); ++i)
+		{
+			for (int k = i + 1; k < corners.size(); ++k)
+			{
+				Point3d dif = corners[k] - corners[i];
+				float dist = dif.mag();
+				if (dist > maxDist)
+				{
+					maxR = dist / 2;
+					Point3d sum = corners[k] + corners[i];
+					Point3d centerpoint = sum / 2;
+					//std::cout << "Point1 " << corners[k] << "Point2 " << corners[i] << "Center " << centerpoint;
+					maxCX = centerpoint.x;
+					maxCY = centerpoint.y;
+					maxCZ = centerpoint.z;
+				}
+			}
+		}
+		cx = maxCX;
+		cy = maxCY;
+		cz = maxCZ;
+		//pad the sphere a little bit for giggles
+		r = maxR * 1.1;
+		//std::cout << "Skeleton bounding sphere " << std::endl;
+		//std::cout << "cx: " << cx << " cy: " << cy << " cz: " << cz << " r: " << r << std::endl;
+		if (!originalCenterSet)
+		{
+			mOriginalCenter = Point3d(cx, cy, cz);
+			mCurrentCenter = Point3d(cx, cy, cz);
+			originalCenterSet = true;
+		}
+	}
+
+	void Skeleton::MoveCenterTo(Point3d targetCenter)
+	{
+		Point3d offset = targetCenter - mCurrentCenter;
+		for (int i = 0; i < mVerts.size(); ++i)
+		{
+			mVerts[i] = mVerts[i] + offset;
+		}
+		mCurrentCenter = targetCenter;
+		boundsFound = false;
+		FindBounds();
+	}
+
+	void Skeleton::ResetCenter()
+	{
+		MoveCenterTo(mOriginalCenter);
+	}
 
 	//Json::Value Skeleton::ToJson()
 	//{
@@ -526,28 +667,56 @@ namespace Roots
 		{
 			for (int j = 0; j < skel.mEdges[i].size(); ++j)
 			{
-				out << (*skel.mEdges[i][j]);
+				out << (skel.mEdges[i][j]);
 			}
 		}
-		out << Skeleton::endSkeletonString;
+		out << Skeleton::endSkeletonString << std::endl;
 		return out;
 	}
 
 	std::istream& operator>>(std::istream& in, Skeleton &skel)
 	{
+		skel.boundsFound = false;
 		bool endHeaderReached = false;
 		std::string line;
 		int numEdges = 0, numVerts = 0;
-
+		Log::out << "Istream operation for skeleton" << std::endl;
 		std::getline(in, line);
-		if (boost::iequals(line, Skeleton::beginSkeletonString))
+		if (!boost::iequals(line, Skeleton::beginSkeletonString))
 		{
-			std::cout << "The skeleton file lacks the " << Skeleton::beginSkeletonString << " header.  Should attempt to load wenzhen_style file" << std::endl;
-			skel.LoadWenzhenStyleFile(in);
+			Log::out << "The skeleton file lacks the " << Skeleton::beginSkeletonString << "header. Should attempt to load wenzhen style file " << std::endl;
+			std::vector<std::string> words = {};
+			boost::split(words, line, boost::is_any_of(" "));
+			int numVerts, numEdges, numFaces;
+			if (words.size() < 3)
+			{
+				if (words.size() == 2)
+				{
+					numVerts = boost::lexical_cast<int>(words[0]);
+					numEdges = boost::lexical_cast<int>(words[1]);
+				}
+				else
+				{
+					Log::out << "The skeleton header lacks sufficient info to parse.  Ending read attempt" << std::endl;
+					return in;
+				}
+			}
+			else
+			{
+				numVerts = boost::lexical_cast<int>(words[0]);
+				numEdges = boost::lexical_cast<int>(words[1]);
+				numFaces = boost::lexical_cast<int>(words[2]);
+			}
+			
+
+			skel.LoadWenzhenStyleFile(in, numVerts, numEdges, numFaces);
+
 			return in;
 		}
+		Log::out << "This is not being recognized as a wenzhen style file" << std::endl;
+		Log::out << "The first input line is " << line << std::endl;
 		std::vector<std::vector<std::string>> headerInfo;
-		while (!endHeaderReached)
+		while (!endHeaderReached && !in.eof())
 		{
 			std::getline(in, line);
 			std::vector<std::string> words = {};
@@ -558,6 +727,11 @@ namespace Roots
 				break;
 			}
 			headerInfo.push_back(words);
+		}
+		if (in.eof())
+		{
+			Log::out << "End of file reached before end of header info, improper file" << std::endl;
+			return in;
 		}
 		for (int i = 0; i < headerInfo.size(); ++i)
 		{
@@ -592,5 +766,8 @@ namespace Roots
 				//do nothing
 			}
 		}
+		float cx, cy, cz, r;
+		skel.GetBoundingSphere(cx, cy, cz, r);
 	}
+	
 }

@@ -14,10 +14,16 @@
 
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
+#include "boost/config.hpp"
+#include "boost/graph/undirected_graph.hpp"
 
 
 namespace Roots
 {
+
+	typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, Point3d, RootAttributes> BoostSkeleton;
+	typedef boost::graph_traits<BoostSkeleton>::vertex_descriptor SkelVert;
+	typedef boost::graph_traits<BoostSkeleton>::edge_descriptor SkelEdge;
 
 	typedef std::vector<SkeletonEdge> edgeList;
 	typedef edgeList::iterator edgeIter;
@@ -27,6 +33,7 @@ namespace Roots
 
 	typedef std::vector<Point3d> vertList;
 	typedef vertList::iterator vertIter;
+
 
 
 
@@ -49,16 +56,18 @@ namespace Roots
 		// << Serializable Implementation//
 
 		Skeleton();
-		Skeleton(vertList aVertices, std::vector<edgePtrList> aEdges);
+		Skeleton(std::string filename);
+		Skeleton(vertList aVertices, std::vector<edgeList> aEdges);
 
-		void LoadFromTextFile(char *filename);
-		void LoadWenzhenStyleFile(std::istream& in);
+		static Skeleton LoadFromTextFile(std::string filename);
+		void LoadWenzhenStyleFile(std::string filename);
+		void LoadWenzhenStyleFile(std::istream &in, int numVerts, int numEdges, int numFaces);
 		//void LoadFromJson(Json::Value skelJson);
 		//void LoadFromJsonFile(char *filename);
 		
 
 		vertList getVertices();
-		std::vector<edgePtrList> getEdges();
+		std::vector<edgeList> getEdges();
 
 
 		void AddEdge(SkeletonEdge toAdd);
@@ -69,7 +78,12 @@ namespace Roots
 
 		SkeletonEdge* GetEdge(int v0, int v1);
 
+		void GetBounds(float &leftX, float &rightX, float &botY, float &topY, float &backZ, float &frontZ);
 		
+		void GetBoundingSphere(float &cx, float &cy, float &cz, float &r);
+
+		void ResetCenter();
+		void MoveCenterTo(Point3d targetCenter);
 		//static Skeleton FromJson();
 
 
@@ -77,10 +91,17 @@ namespace Roots
 
 		//vertex list, potentially sorted in some way, but for now, nada
 		vertList mVerts;
-
 		//list of edges sorted by the id of the first vertex, then the second
-		std::vector<edgePtrList> mEdges;
+		std::vector<edgeList> mEdges;
+		float mLeftX, mRightX, mBotY, mTopY, mBackZ, mFrontZ;
+		bool boundsFound;
 		
+		void FindBounds();
+
+		//this is just convenience information, no need to store or load it
+		Point3d mOriginalCenter;
+		Point3d mCurrentCenter;
+		bool originalCenterSet;
 	public:
 		std::vector<std::vector<int>> mNeighbors;
 		int mNumVertices;

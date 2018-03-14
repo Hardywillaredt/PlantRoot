@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.0)
 
 
 project(RootsToolC)
-
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../python CACHE PATH "python runtime directory")
 
 file(GLOB Roots_src
 "*.h"
@@ -32,6 +32,14 @@ if ("$ENV{BOOST_LIBRARY_DIRS}" STREQUAL "")
 	set(BOOST_LIBRARY_DIRS "C:/Programs/boost_1_65_1/lib64-msvc-14.1" CACHE STRING "Boost library directory, eg. boost_v_xx_x/lib64-msvc-14.1")
 endif()
 
+set(OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../python" CACHE PATH "Output directory for binaries/dlls, typically project python directory")
+
+foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
+    string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
+    set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUT_DIR} )
+    set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUT_DIR} )
+    set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUT_DIR} )
+endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 add_subdirectory(SupportLibs)
 
@@ -43,7 +51,7 @@ link_libraries(${JSON_CPP_LIB})
 
 
 file(GLOB BOOST_LIBS "${BOOST_LIBRARY_DIRS}/*.lib")
-
+link_directories(${BOOST_LIBRARY_DIRS})
 
 set(PYTHON_DIR "C:/Users/Will/AppData/Local/Programs/Python/Python35" CACHE PATH "Python includes directory.  Eg. user/AppData/Local/Programs/Python/Python35/include")
 
@@ -54,18 +62,47 @@ target_include_directories(RootsTool PUBLIC ${BOOST_INCLUDE_DIRS})
 target_include_directories(RootsTool PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
 target_include_directories(RootsTool PUBLIC ${PYTHON_DIR})
 target_include_directories(RootsTool PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
-
-
-
-# target_link_libraries(RootsTool ${JSON_CPP_LIB})
-# target_link_libraries(RootsTool ${BOOST_LIBS})
 target_link_libraries(RootsTool ${PYTHON_DIR}/libs/python35.lib)
+
+
+add_executable(RootsEXE ${Roots_src})
+target_include_directories(RootsEXE PUBLIC ${JSON_INCLUDES})
+target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS})
+target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
+target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR})
+target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
+target_link_libraries(RootsEXE ${PYTHON_DIR}/libs/python35.lib)
+
+set_target_properties(RootsEXE PROPERTIES RUNTIME_OUTPUT_DIRECTORY "D:/dev/school/rootsProject/build/x64/Debug")
+
 
 target_compile_options(
 	RootsTool PRIVATE
 	"/EHsc")
 
+#add_executable(RootsEXE ${Roots_src})
+#target_include_directories(RootsEXE PUBLIC ${JSON_INCLUDES})
+#target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS})
+#target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
+#target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR})
+#target_include_directories(RootsTool PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
+#target_link_libraries(RootsEXE ${PYTHON_DIR}/libs/python35.lib)
 
+#target_compile_options(
+#	RootsEXE PRIVATE
+#	"/EHsc")
+
+# target_link_libraries(RootsTool ${JSON_CPP_LIB})
+# target_link_libraries(RootsTool ${BOOST_LIBS})
+
+
+
+
+set_target_properties(RootsTool PROPERTIES SUFFIX ".pyd")
+#								ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+#								LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+#								RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+#								)
 # add_executable(RootsEXE ${Roots_src})
 # target_include_directories(RootsEXE PUBLIC ${JSON_INCLUDES})
 # target_include_directories(RootsEXE PUBLIC ${Boost_INCLUDE_DIRS})

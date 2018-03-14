@@ -22,11 +22,9 @@ namespace Roots
 			v1 = firstVert;
 			v0 = secondVert;
 		}
-
-		std::cout << "constructor verts " << v0 << " " << v1 << std::endl;
 	}
 
-	SkeletonEdge::SkeletonEdge(int firstVert, int secondVert, double * attributeData)
+	SkeletonEdge::SkeletonEdge(int firstVert, int secondVert, float * attributeData)
 	{
 		attributes = RootAttributes(attributeData);
 		if (firstVert < secondVert)
@@ -40,7 +38,22 @@ namespace Roots
 			v0 = secondVert;
 		}
 
-		std::cout << "constructor verts " << v0 << " " << v1 << std::endl;
+	}
+
+	SkeletonEdge::SkeletonEdge(int firstVert, int secondVert, std::vector<float> attributeData)
+	{
+		attributes = RootAttributes(attributeData);
+		if (firstVert < secondVert)
+		{
+			v0 = firstVert;
+			v1 = secondVert;
+		}
+		else
+		{
+			v1 = firstVert;
+			v0 = secondVert;
+		}
+
 	}
 
 	SkeletonEdge::SkeletonEdge(const SkeletonEdge& other)
@@ -80,7 +93,7 @@ namespace Roots
 
 		for each(Listener *listener in mListeners)
 		{
-			std::cout << "Edge deleted and signal sent" << std::endl;
+			
 			if (listener != nullptr)
 			{
 				listener->SpeakerDestroyed((void*)this, ClassName());
@@ -96,7 +109,6 @@ namespace Roots
 
 	void SkeletonEdge::RegisterListener(Listener *listener)
 	{
-		std::cout << "listener registerd" << std::endl;
 		mListeners.insert(listener);
 	}
 

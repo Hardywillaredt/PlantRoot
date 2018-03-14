@@ -7,9 +7,9 @@ namespace Roots
 		struct WeightedEdge
 		{
 			SkeletonEdge edge;
-			double AStarWeight;
+			float AStarWeight;
 			
-			WeightedEdge(SkeletonEdge edge, Point3d from, Point3d to, double AStarprevious)
+			WeightedEdge(SkeletonEdge edge, Point3d from, Point3d to, float AStarprevious)
 			{
 
 			}

@@ -1,13 +1,14 @@
 #include "MetaGraph.h"
 
+#include <fstream>
 
 namespace Roots
 {
 	MetaGraph::MetaGraph() 
 	{ 
 		mSkeleton = Skeleton();
-		mNodes = {};
 		mTopLevelEdges = {};
+		BuildFlatEdges();
 	}
 
 	MetaGraph::MetaGraph(Skeleton skel, int rootNode, int nextNode)
@@ -51,12 +52,12 @@ namespace Roots
 
 		if (hasNeighbor)
 		{
-			root = new MetaEdge(&mSkeleton, node1, node2);
+			root = MetaEdgeFactory::CreateEdge(&mSkeleton, node1, node2);
 			mTopLevelEdges.push_back(root);
 		}
 		else
 		{
-			mNodes.push_back(MetaNode(&mSkeleton, node1));
+			MetaNodeFactory::findOrCreateNode(&mSkeleton, node1);
 		}
 
 		for (int i = 0; i < MetaEdge::vertsInMetaEdge.size(); ++i)
@@ -73,16 +74,110 @@ namespace Roots
 				
 				if (hasNeighbor)
 				{
-					root = new MetaEdge(&mSkeleton, node1, node2);
+					root = MetaEdgeFactory::CreateEdge(&mSkeleton, node1, node2);
 					mTopLevelEdges.push_back(root);
 				}
 				else
 				{
-					mNodes.push_back(MetaNode(&mSkeleton, node1));
+					MetaNodeFactory::findOrCreateNode(&mSkeleton, node1);
 				}
 			}
 		}
+
+		BuildFlatEdges();
 	}
+
+	void MetaGraph::BuildFlatEdges()
+	{
+		mFlatEdges = std::vector<MetaEdge*>(MetaEdgeFactory::maxId + 1);
+		std::vector<MetaEdge*> toDealWith = mTopLevelEdges;
+		while (toDealWith.size() > 0)
+		{
+			std::vector<MetaEdge*> dealWithChildren = {};
+			for each(MetaEdge* edge in toDealWith)
+			{
+				for each(MetaEdge* edgeChild in edge->GetChildren())
+				{
+					dealWithChildren.push_back(edgeChild);
+				}
+				mFlatEdges[edge->GetId()] = edge;
+			}
+			toDealWith = dealWithChildren;
+		}
+	}
+
+	void MetaGraph::SaveToFile(std::string filename)
+	{
+		std::ofstream fileStream;
+		fileStream.open(filename);
+
+		fileStream << mSkeleton;
+
+		fileStream << MetaNodeFactory::nodes.size() << std::endl;
+
+		for (int i = 0; i < MetaNodeFactory::nodes.size(); ++i)
+		{
+			fileStream << MetaNodeFactory::nodes[i];
+		}
+
+		for each(MetaEdge *topEdge in mTopLevelEdges)
+		{
+			fileStream << topEdge->GetId() << " ";
+		}
+		fileStream << std::endl;
+
+		BuildFlatEdges();
+		for (int i = 0; i < mFlatEdges.size(); ++i)
+		{
+			fileStream << mFlatEdges[i];
+		}
+	}
+
+	MetaGraph::MetaGraph(std::string filename)
+	{
+		mSkeleton = Skeleton();
+
+		std::ifstream fileStream;
+		fileStream.open(filename);
+
+		fileStream >> mSkeleton;
+
+		std::string line;
+		std::getline(fileStream, line);
+
+		int numNodes = boost::lexical_cast<int>(line);
+		for (int node = 0; node < numNodes; ++node)
+		{
+			//MetaNode::LoadNode(fileStream, &mSkeleton);
+		}
+
+		std::vector<int> topLevelEdgeIndices;
+		std::getline(fileStream, line);
+		std::vector<std::string> edgeIndiceStrings;
+		boost::split(edgeIndiceStrings, line, boost::is_any_of(" "));
+		for each(std::string edgeIndex in edgeIndiceStrings)
+		{
+			topLevelEdgeIndices.push_back(boost::lexical_cast<int>(edgeIndex));
+		}
+
+		mTopLevelEdges = {};
+		std::vector<std::string> edgeLines = {};
+		while (std::getline(fileStream, line))
+		{
+			edgeLines.push_back(line);
+		}
+
+		for each(int topLevelEdgeIndex in topLevelEdgeIndices)
+		{
+			mTopLevelEdges.push_back(MetaEdgeFactory::recursiveLoadEdges(edgeLines, topLevelEdgeIndex, &mSkeleton, false));
+		}
+
+		BuildFlatEdges();
+	}
+
+	Skeleton* MetaGraph::GetSkeleton() { return &mSkeleton; }
+	std::vector<MetaEdge*> MetaGraph::GetTopLevelEdges() { return mTopLevelEdges; }
+	std::vector<MetaEdge*> MetaGraph::GetFlatEdges() { return mFlatEdges; }
 
 	//Json::Value MetaGraph::ToJson()
 	//{

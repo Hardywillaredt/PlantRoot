@@ -1,5 +1,7 @@
 #include "Skeleton.h"
 #include "HierarchicalRoot.h"
+#include "PythonModule.h"
+#include "BoostMetaGraph.h"
 
 int main(int argc, char **argv)
 {
@@ -7,18 +9,22 @@ int main(int argc, char **argv)
 	if (argc == 2)
 	{
 		char * filename = argv[1];
-		filename = "D:/2017_Fall/RootsProject/Data/simple.txt";
+		std::string fileString = std::string(filename);
+
+		Roots::BMetaGraph mgraph = Roots::BMetaGraph(fileString);
+
+		//Roots::Skeleton skel = Roots::Skeleton(fileString);
 		
-		std::cout << std::endl << std::endl;
-		std::cout << filename << std::endl;
+		//std::cout << std::endl << std::endl;
+		//std::cout << filename << std::endl;
 
 
-		Roots::Skeleton skeleton;
-		skeleton.LoadFromTextFile(filename);
+		//Roots::Skeleton skeleton;
+		//skeleton.LoadFromTextFile(filename);
 
-		std::cout << "trying my thing" << std::endl;
+		//std::cout << "trying my thing" << std::endl;
 
-		std::cout << skeleton;
+		//std::cout << skeleton;
 
 		//Roots::vertList verts = skeleton.getVertices();
 		//

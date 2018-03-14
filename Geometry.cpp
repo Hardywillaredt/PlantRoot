@@ -1,26 +1,45 @@
 #include "Geometry.h"
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <time.h>
 
+std::string logFile = "D:/dev/school/rootsProject/python/log.txt";
+std::ofstream Log::out = std::ofstream();
+bool Log::isLogOpen = false;
 
-
-Point3d::Point3d(double *aData)
+Point3d::Point3d(float *aData, int index)
 {
-	data[0] = aData[0];
-	data[1] = aData[1];
-	data[2] = aData[2];
+	x = aData[0];
+	y = aData[1];
+	z = aData[2];
+	id = index;
 }
 
-Point3d::Point3d(double x, double y, double z)
+
+Point3d::Point3d(float ax, float ay, float az, int index)
 {
-	data[0] = x;
-	data[1] = y;
-	data[2] = z;
+	x = ax;
+	y = ay;
+	z = az;
+	id = index;
 }
 
 Point3d::Point3d()
 {
-	data[0] = 0;
-	data[1] = 0;
-	data[2] = 0;
+	x = 0;
+	y = 0;
+	z = 0;
+	id = 0;
+}
+
+Point3d::Point3d(const Point3d &other)
+{
+
+	x = other.x;
+	y = other.y;
+	z = other.z;
+	id = other.id;
 }
 
 //Json::Value Point3d::ToJson()
@@ -35,55 +54,83 @@ Point3d::Point3d()
 //	return edge;
 //}
 
-double * Point3d::getData()
-{
-	return data;
-}
 
-double Point3d::x() 
-{ 
-	return data[0]; 
-}
-double Point3d::y()
-{
-	return data[1]; 
-}
-double Point3d::z() 
-{
-	return data[2]; 
-}
 
 Point3d operator-(Point3d &first, Point3d &second)
 {
-	double resultData[3];
-	for (int i = 0; i < 2; ++i)
-	{
-		resultData[i] = first.data[i] - second.data[i];
-	}
-	return Point3d(resultData);
+	return Point3d(first.x - second.x, first.y - second.y, first.z - second.z);
 }
 
 Point3d operator+(Point3d &first, Point3d &second)
 {
-	double resultData[3];
-	for (int i = 0; i < 2; ++i)
-	{
-		resultData[i] = first.data[i] + second.data[i];
-	}
-	return Point3d(resultData);
+
+	return Point3d(first.x + second.x, first.y + second.y, first.z + second.z);
+}
+
+Point3d operator+=(Point3d &first, Point3d &second)
+{
+	first = first + second;
+	return first;
 }
 
 std::ostream& operator<<(std::ostream& out, const Point3d& point)
 {
-	out << point.data[0] << " " << point.data[1] << " " << point.data[2] << std::endl;
+	out << point.x << " " << point.y << " " << point.z;
 	return out;
 }
 
 std::istream& operator>>(std::istream& in, Point3d& point)
 {
-	in >> point.data[0];
-	in >> point.data[1];
-	in >> point.data[2];
+	in >> point.x;
+	in >> point.y;
+	in >> point.z;
 	return in;
 }
 
+Point3d operator/(Point3d & p, float div)
+{
+	return Point3d(p.x / div, p.y / div, p.z / div);
+}
+
+Point3d operator*(Point3d & p, float mul)
+{
+	return Point3d(p.x*mul, p.y*mul, p.z*mul);
+}
+
+float Point3d::mag()
+{
+	float result = 0.0;
+	result += x*x + y*y + z*z;
+	return std::sqrt(result);
+}
+
+Log::Log()
+{
+}
+
+Log::~Log()
+{
+	out.close();
+}
+
+void Log::WriteLine(std::string line)
+{
+	if (!isLogOpen)
+	{
+		out.open(logFile, std::ios_base::app);
+		isLogOpen = true;
+
+		time_t theTime = time(NULL);
+		struct tm *aTime = localtime(&theTime);
+
+
+		out << aTime->tm_hour << ":" << aTime->tm_min << std::endl;
+	}
+	out << line << std::endl;
+}
+
+void Log::CloseLog()
+{
+	isLogOpen = false;
+	out.close();
+}

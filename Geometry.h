@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include "boost/python.hpp"
 //#include "json\json.h"
 //#include "Serializable.h"
 
@@ -11,30 +12,48 @@ public:
 	//Point3d(Json::Value json);
 	//Json::Value ToJson();
 	// << serializable implementation//
+	float x, y, z;
+	int id;
 
+	Point3d(float *aData, int index = 0);
 
-	Point3d(double *aData);
-
-	Point3d(double x, double y, double z);
+	Point3d(float ax, float ay, float az, int index = 0);
 
 	Point3d();
 
-	double *getData();
-
-	double x(); 
-	double y();
-	double z();
+	Point3d(const Point3d& other);
 
 	friend Point3d operator-(Point3d &first, Point3d &second);
 
 	friend Point3d operator+(Point3d &first, Point3d &second);
 
+	friend Point3d operator+=(Point3d &first, Point3d &second);
+
 	friend std::ostream& operator<<(std::ostream& out, const Point3d& point);
 
 	friend std::istream& operator>>(std::istream& in, Point3d& point);
 
+	friend Point3d operator/(Point3d &p, float div);
+
+	friend Point3d operator*(Point3d &p, float mul);
+
+	bool operator<(const Point3d &other) const
+	{
+		return id < other.id;
+	}
+
+	float mag();
 private:
-	double data[3];
+
 };
 
-
+struct Log
+{
+	static std::ofstream out;
+	static bool isLogOpen;
+	Log();
+	static void WriteLine(std::string line);
+	static void CloseLog();
+	
+	~Log();
+};

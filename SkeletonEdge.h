@@ -18,7 +18,9 @@ namespace Roots
 
 		SkeletonEdge(int firstVert, int secondVert, RootAttributes aAttributes = RootAttributes());
 
-		SkeletonEdge(int firstVert, int secondVert, double * attributeData);
+		SkeletonEdge(int firstVert, int secondVert, float * attributeData);
+
+		SkeletonEdge(int firstVert, int secondVert, std::vector<float> attributeData);
 
 		SkeletonEdge(const SkeletonEdge& other);
 
@@ -68,11 +70,11 @@ namespace Roots
 				v0 = tempV;
 			}
 
-			double *attributeData = new double[RootAttributes::NumAttributes];
+			float *attributeData = new float[RootAttributes::NumAttributes];
 
 			for (int i = 0; i < RootAttributes::NumAttributes; ++i)
 			{
-				attributeData[i] = jsonEdge[i + 2].asDouble();
+				attributeData[i] = jsonEdge[i + 2].asfloat();
 			}
 			attributes = RootAttributes(attributeData);
 

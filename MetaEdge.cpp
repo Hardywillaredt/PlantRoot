@@ -1,12 +1,13 @@
 #include "MetaEdge.h"
 #include <algorithm>
 
-std::map<int, Roots::MetaNode> Roots::MetaEdge::vertNodeMap = std::map<int, Roots::MetaNode>();
+
 std::vector<bool> Roots::MetaEdge::vertsInMetaEdge = std::vector<bool>();
 
-int Roots::MetaNode::maxId = -1;
-int Roots::MetaEdge::maxId = -1;
+std::vector<Roots::MetaEdge> Roots::MetaEdgeFactory::allEdges = std::vector<Roots::MetaEdge>();
+int Roots::MetaEdgeFactory::maxId = -1;
 std::string Roots::MetaEdge::metaEdgeString = "metaEdge";
+
 
 namespace
 {
@@ -37,47 +38,12 @@ namespace Roots
 		return isTrue ? "1" : "0";
 	}
 
-	MetaNode::MetaNode()
-	{
-		mSrcSkeleton = nullptr;
-		mIdx = 0;
-		mSrcVert = 0;
-	}
 
-	MetaNode::MetaNode(Skeleton *srcSkeleton, int srcVert)
-	{
-		mSrcSkeleton = srcSkeleton;
-		mSrcVert = srcVert;
-		if(maxId < 0)
-		{
-			mIdx = 0;
-			maxId = 0;
-		}
-		else
-		{
-			++maxId;
-			mIdx = maxId;
-		}
-	}
-	
-	//Json::Value MetaNode::ToJson()
-	//{
-	//	return Json::Value(mSrcVert);
-	//}
 
-	//void MetaNode::addToJsonArray(Json::Value &array)
-	//{
-	//	if(array.size() <= mIdx)
-	//	{
-	//		array.resize(mIdx + 1);
-	//	}
-	//	array[(int)mIdx] = mSrcVert;
-	//}
-
-	MetaEdge::MetaEdge()
+	MetaEdge::MetaEdge(int idx)
 	{
 		mVertices = {};
-		mIdx = -1;
+		mIdx = idx;
 		mOrder = -1;
 		mIsPartOfLoop = false;
 		mSrcSkel = nullptr;
@@ -92,19 +58,11 @@ namespace Roots
 		
 	}
 
-	MetaEdge::MetaEdge(Skeleton *srcSkel, int startVertex, int secondVertex, MetaEdge *parent)
+	MetaEdge::MetaEdge(Skeleton *srcSkel, int idx, int startVertex, int secondVertex, MetaEdge *parent)
 	{
 		mVertices = {};
-		if(maxId < 0)
-		{
-			maxId = 0;
-			mIdx = maxId;
-		}
-		else
-		{
-			++maxId;
-			mIdx = maxId;
-		}
+		mIdx = idx;
+		
 		mParent = parent;
 		if(mParent != nullptr)
 		{
@@ -117,7 +75,7 @@ namespace Roots
 			mOrder = 0;
 		}
 		mSrcSkel = srcSkel;
-		mParentNode = findOrCreateNode(startVertex);
+		mParentNode = MetaNodeFactory::findOrCreateNode(mSrcSkel, startVertex);
 		mParentNodeIndex = mParentNode->mIdx;
 		mParent = parent;
 		mChildren = {};
@@ -145,8 +103,8 @@ namespace Roots
 		}
 		else
 		{
-			std::cout << "The supplied vertex pair cannot be built into a MetaEdge, and there are no alternative vertices ";
-			std::cout << "neighboring the starting vertex which are not already part of a MetaEdge" << std::endl;
+			//std::cout << "The supplied vertex pair cannot be built into a MetaEdge, and there are no alternative vertices ";
+			//std::cout << "neighboring the starting vertex which are not already part of a MetaEdge" << std::endl;
 			return;
 		}
 		
@@ -175,18 +133,62 @@ namespace Roots
 
 		for(int i = 0; i < mVertices.size(); ++i)
 		{
-			SkeletonEdge *memberEdge = mSrcSkel->GetEdge(mVertices[i], mVertices[i+1]);
+			SkeletonEdge* memberEdge = mSrcSkel->GetEdge(mVertices[i], mVertices[i+1]);
 			if(memberEdge != nullptr)
 			{
 				mEdges.push_back(memberEdge);
 			}
 		}
 
-		mChildNode = findOrCreateNode(vNext);
+		mChildNode = MetaNodeFactory::findOrCreateNode(mSrcSkel, vNext);
 		mChildNodeIndex = mChildNode->mIdx;
 
 		mChildNode->mNeighbors.push_back(mParentNode->mIdx);
 		mParentNode->mNeighbors.push_back(mChildNode->mIdx);
+	}
+
+	MetaEdge::MetaEdge(const MetaEdge &toCopy)
+	{
+		mOrder = toCopy.mOrder;
+		mIdx = toCopy.mIdx;
+		mVertices = toCopy.mVertices;
+		mSrcSkel = toCopy.mSrcSkel;
+	}
+
+	MetaEdge::MetaEdge(Skeleton *srcSkel, int aIdx, int order, bool aIsPartOfLoop, int parentSkelVertex, int childSkelVertex, std::vector<int> skelVertices, std::vector<MetaEdge*> aChildren)
+	{
+		mSrcSkel = srcSkel;
+		mIdx = aIdx;
+		mOrder = order;
+		mIsPartOfLoop = aIsPartOfLoop;
+		mParentNode = MetaNodeFactory::findOrCreateNode(mSrcSkel, parentSkelVertex);
+		mChildNode = MetaNodeFactory::findOrCreateNode(mSrcSkel, childSkelVertex);
+
+		mVertices = skelVertices;
+		if (vertsInMetaEdge.size() < mSrcSkel->mNumVertices)
+		{
+			vertsInMetaEdge.resize(mSrcSkel->mNumVertices);
+		}
+		mEdges = {};
+		for (int i = 0; i < mVertices.size() - 1; ++i)
+		{
+			int vert1 = mVertices[i];
+			int vert2 = mVertices[i + 1];
+			mEdges.push_back(mSrcSkel->GetEdge(vert1, vert2));
+		}
+		for each(int vert in mVertices)
+		{
+			vertsInMetaEdge[vert] = true;
+		}
+
+		mChildren = aChildren;
+		mChildrenIndices = {};
+		for each(MetaEdge *child in mChildren)
+		{
+			mChildrenIndices.push_back(child->GetId());
+			child->SetParent(this);
+		}
+
 	}
 
 	bool MetaEdge::validateVertexPair(int vert1, int vert2, Skeleton *srcSkel, int &alternateVert2)
@@ -227,211 +229,96 @@ namespace Roots
 		return isValid;
 	}
 
-	MetaEdge::MetaEdge(const MetaEdge &toCopy)
-	{
-		mOrder = toCopy.mOrder;
-		mIdx = toCopy.mIdx;
-		mVertices = toCopy.mVertices;
-		mSrcSkel = toCopy.mSrcSkel;
-	}
-
-	MetaEdge::MetaEdge(Skeleton *srcSkel, int aIdx, int order, bool aIsPartOfLoop, int parentSkelVertex, int childSkelVertex, std::vector<int> skelVertices, std::vector<MetaEdge*> aChildren)
-	{
-		mSrcSkel = srcSkel;
-		mIdx = aIdx;
-		if (maxId < mIdx)
-		{
-			maxId = mIdx;
-		}
-		mOrder = order;
-		mIsPartOfLoop = aIsPartOfLoop;
-
-		mParentNode = findOrCreateNode(parentSkelVertex);
-		mChildNode = findOrCreateNode(childSkelVertex);
-		
-		mVertices = skelVertices;
-		if (vertsInMetaEdge.size() < mSrcSkel->mNumVertices)
-		{
-			vertsInMetaEdge.resize(mSrcSkel->mNumVertices);
-		}
-		mEdges = {};
-		for (int i = 0; i < mVertices.size() - 1; ++i)
-		{
-			int vert1 = mVertices[i];
-			int vert2 = mVertices[i + 1];
-			mEdges.push_back(mSrcSkel->GetEdge(vert1, vert2));
-		}
-		for each(int vert in mVertices)
-		{
-			vertsInMetaEdge[vert] = true;
-		}
-
-		mChildren = aChildren;
-		mChildrenIndices = {};
-		for each(MetaEdge *child in mChildren)
-		{
-			mChildrenIndices.push_back(child->GetId());
-			child->SetParent(this);
-		}
-
-	}
 
 
-	//Json::Value MetaEdge::ToJson()
+
+
+	//void MetaEdge::buildDescendants()
 	//{
-	//	Json::Value edgeJson;
+	//	buildDescendantsAtNode(mChildNode->mSrcVert);
+	//	//if this is the primary root, then we also need to build out children from its 'parent' node.
+	//	if(mOrder == 0)
+	//	{
+	//		buildDescendantsAtNode(mParentNode->mSrcVert);
+	//	}
+	//}
 
+	//void MetaEdge::buildDescendantsAtNode(int vertIndex)
+	//{
+	//	for each(int neighborVert in mSrcSkel->mNeighbors[vertIndex])
+	//	{
+	//		if (!vertsInMetaEdge[neighborVert])
+	//		{
+	//			MetaEdge *child = new MetaEdge(mSrcSkel, mParentNode->mSrcVert, neighborVert, this);
+	//			child->buildDescendants();
+	//			mChildren.push_back(child);
+	//		}
+	//		else
+	//		{
+	//			//if the neighbor is in a metaEdge already, and that neighbor is neither the second or second last
+	//			//vertex on this edge, then there must be a loop.  Set the is loop indicator.
+	//			if(neighborVert != mVertices[1] && neighborVert != mVertices[mVertices.size() - 2])
+	//			{
+	//				std::cout << "Loop Found" << std::endl;
+	//				mIsPartOfLoop = true;
+	//			}
+	//		}
+	//	}
+	//}
+
+	//MetaEdge* MetaEdge::recursiveLoad(std::vector<std::string> lines, int lineToLoad, Skeleton* srcSkeleton, bool isTopDown)
+	//{
+	//	std::string myLine = lines[lineToLoad];
+	//	std::vector<std::string> data = {};
+	//	boost::split(data, myLine, boost::is_any_of(" "));
+
+	//	int dataI = 0;
+
+	//	int idx = boost::lexical_cast<int>(data[dataI]); ++dataI;
 	//	
+	//	int order = boost::lexical_cast<int>(data[dataI]); ++dataI;
 
-	//	edgeJson["Vertices"] = Json::Value(Json::ValueType::arrayValue);
-	//	edgeJson["Vertices"].resize(mVertices.size());
-	//	for(int i = 0; i < mVertices.size(); ++i)
+	//	bool isPartOfLoop = stringToBool(data[dataI]); ++dataI;
+
+	//	int parentEdgeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
+
+	//	if (parentEdgeId >= 0)
 	//	{
-	//		edgeJson["Vertices"][i] = mVertices[i];
+	//		return recursiveLoad(lines, parentEdgeId, srcSkeleton);
 	//	}
-	//	edgeJson["Index"] = mIdx;
-	//	edgeJson["IsPartOfLoop"] = mIsPartOfLoop;
-
-	//	edgeJson["ChildrenIndices"] = Json::Value(Json::ValueType::arrayValue);
 	//	
+	//	int parentNodeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
+	//	
+	//	int parentNodeSrcVert = boost::lexical_cast<int>(data[dataI]); ++dataI;
 
-	//	edgeJson["MetaNodes"] = Json::Value(Json::ValueType::arrayValue);
-	//	edgeJson["MetaNodes"].resize(2);
-	//	edgeJson["MetaNodes"][0] = mParentNode->mIdx;
-	//	edgeJson["MetaNodes"][1] = mChildNode->mIdx;
+	//	int childNodeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
 
+	//	int childNodeSrcVert = boost::lexical_cast<int>(data[dataI]); ++dataI;
 
-	//	return edgeJson;
-	//}
+	//	int numSkelVerts = boost::lexical_cast<int>(data[dataI]); ++dataI;
 
-	//void MetaEdge::loadFromJson(Json::Value metaEdgeJson)
-	//{
-	//	Json::Value vertJson = metaEdgeJson["Vertices"];
-	//	mVertices = {};
-	//	for(int i = 0; i < (int)vertJson.size(); ++i)
+	//	std::vector<int> skelVerts(numSkelVerts);
+
+	//	for (int skelI = 0; skelI < numSkelVerts; ++skelI, ++dataI)
 	//	{
-	//		mVertices.push_back(vertJson[i].asInt());
-	//	}
-	//	Json::Value metaNodeJson = metaEdgeJson["MetaNodes"];
-
-	//	mParentNodeIndex = metaNodeJson[0].asInt();
-	//	mChildNodeIndex = metaNodeJson[0].asInt();
-	//}
-
-	//void MetaEdge::recursiveAddToJson(Json::Value &array)
-	//{
-	//	if(array.size() <= mIdx)
-	//	{
-	//		array.resize(mIdx + 1);
+	//		skelVerts[skelI] = boost::lexical_cast<int>(data[dataI]);
 	//	}
 
-	//	array[(int)mIdx] = ToJson();
+	//	int numChildren = boost::lexical_cast<int>(data[dataI]); ++dataI;
+
+	//	std::vector<MetaEdge*> children = {};
+
+	//	for (int childI = 0; childI < numChildren; ++childI, ++dataI)
+	//	{
+	//		int childLine = boost::lexical_cast<int>(data[dataI]);
+	//		children.push_back(MetaEdge::recursiveLoad(lines, childLine, srcSkeleton, true));
+	//	}
+
+	//	return new MetaEdge(srcSkeleton, idx, order, isPartOfLoop, parentNodeSrcVert, childNodeSrcVert, skelVerts, children);
 	//}
-
-	MetaNode* MetaEdge::findOrCreateNode(int srcVert)
-	{
-		//if the meta node isn't mapped, create it
-		if (vertNodeMap.count(srcVert) == 0)
-		{
-			MetaNode node = MetaNode(mSrcSkel, srcVert);
-			vertNodeMap[srcVert] = node;
-		}
-
-		return &(vertNodeMap[srcVert]);
-	}
-
-
-	void MetaEdge::buildDescendants()
-	{
-		buildDescendantsAtNode(mChildNode->mSrcVert);
-		//if this is the primary root, then we also need to build out children from its 'parent' node.
-		if(mOrder == 0)
-		{
-			buildDescendantsAtNode(mParentNode->mSrcVert);
-		}
-	}
-
-	void MetaEdge::buildDescendantsAtNode(int vertIndex)
-	{
-		for each(int neighborVert in mSrcSkel->mNeighbors[vertIndex])
-		{
-			if (!vertsInMetaEdge[neighborVert])
-			{
-				MetaEdge *child = new MetaEdge(mSrcSkel, mParentNode->mSrcVert, neighborVert, this);
-				child->buildDescendants();
-				mChildren.push_back(child);
-			}
-			else
-			{
-				//if the neighbor is in a metaEdge already, and that neighbor is neither the second or second last
-				//vertex on this edge, then there must be a loop.  Set the is loop indicator.
-				if(neighborVert != mVertices[1] && neighborVert != mVertices[mVertices.size() - 2])
-				{
-					std::cout << "Loop Found" << std::endl;
-					mIsPartOfLoop = true;
-				}
-			}
-		}
-	}
-
-	MetaEdge* MetaEdge::recursiveLoad(std::vector<std::string> lines, int lineToLoad, Skeleton* srcSkeleton, bool isTopDown)
-	{
-		std::string myLine = lines[lineToLoad];
-		std::vector<std::string> data = {};
-		boost::split(data, myLine, boost::is_any_of(" "));
-
-		int dataI = 0;
-
-		int idx = boost::lexical_cast<int>(data[dataI]); ++dataI;
-		
-		int order = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		bool isPartOfLoop = stringToBool(data[dataI]); ++dataI;
-
-		int parentEdgeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		if (parentEdgeId >= 0)
-		{
-			return recursiveLoad(lines, parentEdgeId, srcSkeleton);
-		}
-		
-		int parentNodeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
-		
-		int parentNodeSrcVert = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		int childNodeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		int childNodeSrcVert = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		int numSkelVerts = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		std::vector<int> skelVerts(numSkelVerts);
-
-		for (int skelI = 0; skelI < numSkelVerts; ++skelI, ++dataI)
-		{
-			skelVerts[skelI] = boost::lexical_cast<int>(data[dataI]);
-		}
-
-		int numChildren = boost::lexical_cast<int>(data[dataI]); ++dataI;
-
-		std::vector<MetaEdge*> children = {};
-
-		for (int childI = 0; childI < numChildren; ++childI, ++dataI)
-		{
-			int childLine = boost::lexical_cast<int>(data[dataI]);
-			children.push_back(MetaEdge::recursiveLoad(lines, childLine, srcSkeleton, true));
-		}
-
-		return new MetaEdge(srcSkeleton, idx, order, isPartOfLoop, parentNodeSrcVert, childNodeSrcVert, skelVerts, children);
-	}
 
 	std::ostream& operator<<(std::ostream& out, const MetaEdge& edge)
 	{
-		//if we are looking at the very first meta edge, we should print out total number of meta edges
-		if (edge.mIdx == 0)
-		{
-			out << " " << edge.maxId + 1 << std::endl;
-		}
 		out << edge.mIdx << " " << edge.mOrder << " " << boolToString(edge.mIsPartOfLoop) << " ";
 
 		//we need to know if this is a top level edge or not when loading, 
@@ -463,6 +350,7 @@ namespace Roots
 
 
 	std::vector<int> MetaEdge::GetVertices() { return mVertices; }
+	std::vector<SkeletonEdge*> MetaEdge::GetEdges() { return mEdges; }
 	Skeleton* MetaEdge::GetSkeleton() { return mSrcSkel; }
 	MetaNode* MetaEdge::GetParentNode() { return mParentNode; }
 	MetaNode* MetaEdge::GetChildNode() { return mChildNode; }
@@ -473,4 +361,128 @@ namespace Roots
 	bool MetaEdge::isInLoop() { return mIsPartOfLoop; }
 
 	void MetaEdge::SetParent(MetaEdge *parent) { mParent = parent; return; }
+
+
+	MetaEdge* MetaEdgeFactory::CreateEdge()
+	{
+		if (maxId < 0)
+		{
+			maxId = 0;
+		}
+		else
+		{
+			++maxId;
+		}
+		
+		allEdges.push_back(MetaEdge(maxId));
+		return &allEdges[maxId];
+	}
+	MetaEdge* MetaEdgeFactory::CreateEdge(Skeleton *srcSkel, int startVertex, int secondVertex, MetaEdge *parent)
+	{
+		if (maxId < 0)
+		{
+			maxId = 0;
+		}
+		else
+		{
+			++maxId;
+		}
+		allEdges.push_back(MetaEdge(srcSkel, maxId, startVertex, secondVertex, parent));
+		buildDescendants(&allEdges[maxId]);
+		return &allEdges[maxId];
+	}
+
+	MetaEdge* MetaEdgeFactory::CreateEdge(Skeleton *srcSkel, int aIdx, int order, bool aIsPartOfLoop, int parentSkelVertex, int childSkelVertex, std::vector<int> skelVertices, std::vector<MetaEdge*> aChildren)
+	{
+		if (aIdx > maxId)
+		{
+			maxId = aIdx;
+			allEdges.resize(maxId + 1, MetaEdge());
+		}
+		allEdges[aIdx] = MetaEdge(srcSkel, aIdx, order, aIsPartOfLoop, parentSkelVertex, childSkelVertex, skelVertices, aChildren);
+		return &allEdges[aIdx];
+	}
+
+	MetaEdge* MetaEdgeFactory::recursiveLoadEdges(std::vector<std::string> lines, int lineToLoad, Skeleton* srcSkeleton, bool isTopDown)
+	{
+		std::string myLine = lines[lineToLoad];
+		std::vector<std::string> data = {};
+		boost::split(data, myLine, boost::is_any_of(" "));
+
+		int dataI = 0;
+		int idx = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		int order = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		bool isPartOfLoop = stringToBool(data[dataI]); ++dataI;
+		int parentEdgeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
+
+		if (parentEdgeId >= 0)
+		{
+			return recursiveLoadEdges(lines, parentEdgeId, srcSkeleton);
+		}
+
+		int parentNodeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		int parentNodeSrcVert = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		int childNodeId = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		int childNodeSrcVert = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		int numSkelVerts = boost::lexical_cast<int>(data[dataI]); ++dataI;
+
+		std::vector<int> skelVerts(numSkelVerts);
+		for (int skelI = 0; skelI < numSkelVerts; ++skelI, ++dataI)
+		{
+			skelVerts[skelI] = boost::lexical_cast<int>(data[dataI]);
+		}
+
+		int numChildren = boost::lexical_cast<int>(data[dataI]); ++dataI;
+		std::vector<MetaEdge*> children = {};
+		for (int childI = 0; childI < numChildren; ++childI, ++dataI)
+		{
+			int childLine = boost::lexical_cast<int>(data[dataI]);
+			children.push_back(MetaEdgeFactory::recursiveLoadEdges(lines, childLine, srcSkeleton, true));
+		}
+
+		MetaEdge *result = CreateEdge(srcSkeleton, idx, order, isPartOfLoop, parentNodeSrcVert, childNodeSrcVert, skelVerts, children);
+		for each(MetaEdge * child in children)
+		{
+			child->SetParent(result);
+		}
+
+		return result;
+	}
+
+
+
+	void MetaEdgeFactory::buildDescendants(MetaEdge *parentEdge)
+	{
+		buildDescendantsAtNode(parentEdge, parentEdge->mChildNode->mSrcVert);
+		//if this is the primary root, then we also need to build out children from its 'parent' node.
+		if (parentEdge->mOrder == 0)
+		{
+			buildDescendantsAtNode(parentEdge, parentEdge->mParentNode->mSrcVert);
+		}
+	}
+
+	void MetaEdgeFactory::buildDescendantsAtNode(MetaEdge *parentEdge, int vertIndex)
+	{
+		for each(int neighborVert in parentEdge->mSrcSkel->mNeighbors[vertIndex])
+		{
+			if (!MetaEdge::vertsInMetaEdge[neighborVert])
+			{
+				MetaEdge *child = CreateEdge(parentEdge->GetSkeleton(), parentEdge->mParentNode->mSrcVert, neighborVert, parentEdge);
+				buildDescendants(child);
+				parentEdge->mChildren.push_back(child);
+				child->SetParent(parentEdge);
+			}
+			else
+			{
+				//if the neighbor is in a metaEdge already, and that neighbor is neither the second or second last
+				//vertex on this edge, then there must be a loop.  Set the is loop indicator.
+				if (neighborVert != parentEdge->mVertices[1] && neighborVert != parentEdge->mVertices[parentEdge->mVertices.size() - 2])
+				{
+					//std::cout << "Loop Found" << std::endl;
+					parentEdge->mIsPartOfLoop = true;
+				}
+			}
+		}
+	}
+
 }
