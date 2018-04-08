@@ -13,6 +13,10 @@ file(GLOB Roots_src
 set(BOOST_INCLUDEDIR D:/programs/boost_1_65_1/boost_1_65_1/boost_1_65_1/boost CACHE PATH "Boost header directory" FORCE)
 set(BOOST_ROOT D:/programs/boost_1_65_1/boost_1_65_1/boost_1_65_1 CACHE PATH "Boost root directory" FORCE)
 
+set(GLFW_INCLUDEDIR D:/dev/programs/glfw-3.2.1/glfw-3.2.1/include CACHE PATH "GLFW include directory")
+set(GLFW_LIB D:/dev/programs/glfw-3.2.1/glfw-3.2.1/glfw-build/src/Debug/glfw3.lib CACHE STRING "glfw compiled library")
+set(GLAD_INCLUDEDIR D:/dev/programs/glad/include CACHE PATH "GLAD include directory")
+
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 
 find_package(Boost REQUIRED)
@@ -62,7 +66,10 @@ target_include_directories(RootsTool PUBLIC ${BOOST_INCLUDE_DIRS})
 target_include_directories(RootsTool PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
 target_include_directories(RootsTool PUBLIC ${PYTHON_DIR})
 target_include_directories(RootsTool PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
-target_link_libraries(RootsTool ${PYTHON_DIR}/libs/python35.lib)
+target_include_directories(RootsTool PUBLIC ${GLFW_INCLUDEDIR})
+target_include_directories(RootsTool PUBLIC ${GLAD_INCLUDEDIR})
+target_link_libraries(RootsTool ${PYTHON_DIR}/libs/python35.lib ${GLFW_LIB} opengl32.lib)
+
 
 
 add_executable(RootsEXE ${Roots_src})
@@ -71,7 +78,10 @@ target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS})
 target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
 target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR})
 target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
-target_link_libraries(RootsEXE ${PYTHON_DIR}/libs/python35.lib)
+target_include_directories(RootsEXE PUBLIC ${GLFW_INCLUDEDIR})
+target_include_directories(RootsEXE PUBLIC ${GLAD_INCLUDEDIR})
+target_link_libraries(RootsEXE ${PYTHON_DIR}/libs/python35.lib ${GLFW_LIB} opengl32.lib)
+
 
 set_target_properties(RootsEXE PROPERTIES RUNTIME_OUTPUT_DIRECTORY "D:/dev/school/rootsProject/build/x64/Debug")
 

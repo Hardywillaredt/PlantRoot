@@ -36,7 +36,7 @@ namespace Roots
 		RootAttributes();
 		RootAttributes(float *attributeData, Point3d v0 = Point3d(), Point3d v1 = Point3d());
 		RootAttributes(std::vector<float> attributeData, Point3d v0 = Point3d(), Point3d v1 = Point3d());
-		RootAttributes(float aThickness, float aWidth, float aLength, Point3d v0 = Point3d(), Point3d v1 = Point3d());
+		RootAttributes(float aThickness, float aWidth, Point3d v0 = Point3d(), Point3d v1 = Point3d());
 		
 
 		bool operator==(RootAttributes& second);

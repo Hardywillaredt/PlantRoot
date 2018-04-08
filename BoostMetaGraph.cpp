@@ -1,12 +1,13 @@
 #include "BoostMetaGraph.h"
 #include "boost/graph/connected_components.hpp"
+#include "boost/graph/kruskal_min_spanning_tree.hpp"
 #include <iostream>
 #include <fstream>
 namespace
 {
 	typedef boost::graph_traits<Roots::BMetaGraph>::vertex_iterator vertIter;
 	typedef boost::graph_traits<Roots::BMetaGraph>::edge_iterator edgeIter;
-
+	using namespace boost;
 	struct metaVertIter : std::pair<vertIter, vertIter>
 	{
 		metaVertIter(const std::pair<vertIter, vertIter> &other)
@@ -53,6 +54,17 @@ namespace
 		}
 		return list;
 	}
+
+	template <class T>
+	std::vector<T> toStdVector(boost::python::list list)
+	{
+		std::vector<T> result = {};
+		for (int i = 0; i < boost::python::len(list); ++i)
+		{
+			result.push_back(boost::python::extract<T>(list[i]));
+		}
+		return result;
+	}
 }
 namespace Roots
 {
@@ -62,7 +74,12 @@ namespace Roots
 		mSrcVert = 0;
 		mSrcSkeleton = nullptr;
 		connectedComponent = -1;
-		nodeSize = 0.0;
+		nodeThickness = 0.0;
+		nodeWidth = 0.0;
+		hasGeom = false;
+		x = 0;
+		y = 0;
+		z = 0;
 	}
 	BMetaNode::BMetaNode(SkelVert srcId, BSkeleton *skel)
 	{
@@ -70,7 +87,12 @@ namespace Roots
 		mSrcSkeleton = skel;
 		//std::cout << "number of vertices in pointed skeleton " << boost::num_vertices(*skel) << std::endl;
 		connectedComponent = -1;
-		nodeSize = 0.0;
+		nodeThickness = 0.0;
+		nodeWidth = 0.0;
+		hasGeom = true;
+		x = skel->operator[](srcId).x;
+		y = skel->operator[](srcId).y;
+		z = skel->operator[](srcId).z;
 	}
 
 	////////////////////////////////////////////// BMetaEdge ///////////////////////////////////////
@@ -80,16 +102,22 @@ namespace Roots
 		mVertices = {};
 		mEdges = {};
 		averageThickness = 0.0;
+		averageWidth = 0.0;
+		isBridge = false;
 		//mSrcSkeleton = nullptr;
 
 	}
 
-	BMetaEdge::BMetaEdge(std::vector<SkelVert> vertices, BSkeleton* srcSkeleton)
+	BMetaEdge::BMetaEdge(std::vector<SkelVert> vertices, BSkeleton* srcSkeleton, std::vector<GLfloat> &edgeVertices, std::vector<GLVertexIndex> &edgeIndices)
 	{
 		mVertices = vertices;
 		mEdges = {};
 		float weightedAvgThickness = 0.0;
+		float weightedAvgWidth = 0.0;
 		float skelEdgeLength = 0.0;
+		averageThickness = 0.0;
+		averageWidth = 0.0;
+		isBridge = false;
 		for (int i = 0; i < mVertices.size() - 1; ++i)
 		{
 			SkelVert v0 = mVertices[i];
@@ -104,6 +132,7 @@ namespace Roots
 				float thickness = skelRootAttributes[Thickness];
 				float length = skelRootAttributes.euclidLength;
 				weightedAvgThickness += thickness * length;
+				weightedAvgWidth += skelRootAttributes[Width] * length;
 				skelEdgeLength += length;
 			}
 			else
@@ -112,6 +141,7 @@ namespace Roots
 				//level, eg it is an added edge at the metagraph level
 				//do nothing here
 				float cumThickness = 0.0;
+				float cumWidth = 0.0;
 				int numEdges = 0;
 
 				BSkeleton::adjacency_iterator adjIt, adjEnd;
@@ -122,6 +152,7 @@ namespace Roots
 					boost::tie(e, exists) = boost::edge(v0, leadVert, *srcSkeleton);
 					RootAttributes skelRootAttributes = srcSkeleton->operator[](e);
 					cumThickness += skelRootAttributes[Thickness];
+					cumWidth += skelRootAttributes[Width];
 					++numEdges;
 				}
 				boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(v1, *srcSkeleton);
@@ -131,13 +162,48 @@ namespace Roots
 					boost::tie(e, exists) = boost::edge(v1, leadVert, *srcSkeleton);
 					RootAttributes skelRootAttributes = srcSkeleton->operator[](e);
 					cumThickness += skelRootAttributes[Thickness];
+					cumWidth += skelRootAttributes[Width];
 					++numEdges;
 				}
-				skelEdgeLength = 1.0;
-				weightedAvgThickness = cumThickness / numEdges;
+				if (numEdges == 0)
+				{
+					numEdges = 1;
+				}
+				weightedAvgThickness += cumThickness / numEdges;
+				weightedAvgThickness += cumWidth / numEdges;
 			}
 		}
+		if (skelEdgeLength == 0)
+		{
+			skelEdgeLength = 1;
+		}
 		averageThickness = weightedAvgThickness / skelEdgeLength;
+		
+		if (isnan(averageThickness))
+		{
+			averageThickness = 1.0;
+			std::cout << "Note : improper MetaEdge thickness, skeleton data may be missing thickness data on one or more roots" << std::endl;
+		}
+
+		averageWidth = weightedAvgWidth / skelEdgeLength;
+
+		if (isnan(averageWidth))
+		{
+			averageWidth = 1.0;
+			std::cout << "Note : improper MetaEdge width, skeleton data may be missing width data on one or more roots" << std::endl;
+		}
+
+		glEdgeVerticesStart = edgeVertices.size() / 3;
+		glEdgeLinesStart = edgeIndices.size() / 2;
+
+		for (SkelVert skelvert : mVertices)
+		{
+			Point3d p = srcSkeleton->operator[](skelvert);
+			edgeVertices.push_back(p.x);
+			edgeVertices.push_back(p.y);
+			edgeVertices.push_back(p.z);
+		}
+
 		//mSrcSkeleton = srcSkeleton;
 
 	}
@@ -235,15 +301,25 @@ namespace Roots
 	{
 		order = -1;
 		connectedComponent = -1;
-		nodeSize = -1;
+		nodeThickness = -1;
+		nodeWidth = -1;
+		degree = 0;
 	}
 
-	MetaNode3d::MetaNode3d(BMetaNode src, Roots::BSkeleton *srcSkeleton, int aOrder)
+	MetaNode3d::MetaNode3d(BMetaNode src, Roots::BSkeleton *srcSkeleton, int aOrder, int aDegree)
 		:Point3d(srcSkeleton->operator[](src.mSrcVert))
 	{
+		if (src.hasGeom)
+		{
+			x = src.x;
+			y = src.y;
+			z = src.z;
+		}
 		order = aOrder;
 		connectedComponent = src.connectedComponent;
-		nodeSize = src.nodeSize;
+		nodeThickness = src.nodeThickness;
+		nodeWidth = src.nodeWidth;
+		degree = aDegree;
 	}
 
 
@@ -255,19 +331,23 @@ namespace Roots
 		node0 = 0;
 		node1 = 0;
 		avgThickness = 0;
+		avgWidth = 0;
 		connectedComponent = -1;
-		edges = boost::python::list();
+		isBridge = false;
+		//edges = boost::python::list();
 
 	}
 
-	MetaEdge3d::MetaEdge3d(int n0, int n1, float thickness, int component, int aOrder, std::vector<RootAttributes> aEdges)
+	MetaEdge3d::MetaEdge3d(int n0, int n1, float thickness, float width, int component, int aOrder, std::vector<RootAttributes> aEdges, bool aIsBridge)
 	{
 		node0 = n0;
 		node1 = n1;
 		avgThickness = thickness;
+		avgWidth = width;
 		connectedComponent = component;
 		order = aOrder;
 		edges = toPythonList<RootAttributes>(aEdges);
+		isBridge = aIsBridge;
 	}
 
 
@@ -297,7 +377,6 @@ namespace Roots
 		
 		loadFromFile(filename);
 		//std::cout << "Finished loading file" << std::endl;
-		findAndLabelConnectedComponents();
 	}
 
 
@@ -374,6 +453,8 @@ namespace Roots
 			}
 		}
 
+
+
 		pythonUpToDate = false;
 	}
 
@@ -390,22 +471,29 @@ namespace Roots
 		SkelVert startSkelVert = operator[](startV).mSrcVert;
 		edgeVerts.push_back(startSkelVert);
 		visitedSkelVerts[startSkelVert] = true;
-
-		while (boost::degree(lead, mSkeleton) == 2)
+		SkelVert last = startSkelVert;
+		while (boost::degree(lead, mSkeleton) == 2 && lead != startSkelVert)
 		{
 			edgeVerts.push_back(lead);
 			visitedSkelVerts[lead] = true;
 
 			BSkeleton::adjacency_iterator adjIt, adjEnd;
 			boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(lead, mSkeleton);
-
-			for (; adjIt != adjEnd; ++adjIt)
+			if (*adjIt != last)
 			{
-				if (!visitedSkelVerts[*adjIt])
-				{
-					lead = *adjIt;
-				}
+				last = lead;
+				lead = *adjIt;
+				continue;
 			}
+			++adjIt;
+			if (*adjIt != last)
+			{
+				last = lead;
+				lead = *adjIt;
+				continue;
+			}
+
+			break;
 		}
 
 		edgeVerts.push_back(lead);
@@ -436,8 +524,11 @@ namespace Roots
 
 		operator[](e) = edge;
 
-		operator[](v0).nodeSize = std::max(operator[](v0).nodeSize, edge.averageThickness);
-		operator[](v1).nodeSize = std::max(operator[](v1).nodeSize, edge.averageThickness);
+		operator[](v0).nodeThickness = std::max(operator[](v0).nodeThickness, edge.averageThickness);
+		operator[](v1).nodeThickness = std::max(operator[](v1).nodeThickness, edge.averageThickness);
+
+		operator[](v0).nodeWidth = std::max(operator[](v0).nodeWidth, edge.averageWidth);
+		operator[](v1).nodeWidth = std::max(operator[](v1).nodeWidth, edge.averageWidth);
 
 		pythonUpToDate = false;
 		return e;
@@ -450,28 +541,32 @@ namespace Roots
 		std::vector<SkelVert> addedVerts = {};
 		
 		//iterate over source vertices, and add copies of their information to the skeleton
-		for each(SkelVert v in edge.mVertices)
+		if (edge.mVertices.size() > 0)
 		{
-			addedVerts.push_back(srcSkel->addVertex(srcSkel->getVertData(v)));
-		}
-
-		bool exists = false;
-		std::vector<SkelEdge> srcEdges = {};
-		//find all the edge data associated with the original set of vertices
-		for (int i = 0; i < edge.mVertices.size() - 1; ++i)
-		{
-			SkelEdge e = srcSkel->getEdge(edge.mVertices[i], edge.mVertices[i + 1], exists);
-			if (exists)
+			for each(SkelVert v in edge.mVertices)
 			{
-				srcEdges.push_back(e);
+				addedVerts.push_back(srcSkel->addVertex(srcSkel->getVertData(v)));
+			}
+
+			bool exists = false;
+			std::vector<SkelEdge> srcEdges = {};
+			//find all the edge data associated with the original set of vertices
+			for (int i = 0; i < edge.mVertices.size() - 1; ++i)
+			{
+				SkelEdge e = srcSkel->getEdge(edge.mVertices[i], edge.mVertices[i + 1], exists);
+				if (exists)
+				{
+					srcEdges.push_back(e);
+				}
+			}
+
+			//add edges between all of the new added vertices containing the info from the original edge data
+			for (int i = 0; i < edge.mVertices.size() - 1; ++i)
+			{
+				srcSkel->addEdge(addedVerts[i], addedVerts[i + 1], srcSkel->getEdgeData(srcEdges[i]));
 			}
 		}
 
-		//add edges between all of the new added vertices containing the info from the original edge data
-		for (int i = 0; i < edge.mVertices.size() - 1; ++i)
-		{
-			srcSkel->addEdge(addedVerts[i], addedVerts[i + 1], srcSkel->getEdgeData(srcEdges[i]));
-		}
 
 		//add metanodes and edges for the augmented elements in the skeleton
 		dupV0 = addNode(addedVerts[0], srcSkel);
@@ -504,11 +599,15 @@ namespace Roots
 
 		boost::remove_edge(edgeToRemove, *this);
 
+
 		BMetaGraph::adjacency_iterator adjIt, adjEnd;
+
+		BMetaGraph::out_edge_iterator edgeIt, edgeEnd;
 
 		boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(v0, *this);
 
 		float maxThickness = -1;
+		float maxWidth = -1;
 		while (adjIt != adjEnd)
 		{
 			bool exists;
@@ -516,13 +615,25 @@ namespace Roots
 			boost::tie(adjEdge, exists) = boost::edge(v0, *adjIt, *this);
 
 			maxThickness = std::max(maxThickness, operator[](adjEdge).averageThickness);
+			maxWidth = std::max(maxWidth, operator[](adjEdge).averageWidth);
+			++adjIt;
 		}
-		operator[](v0).nodeSize = maxThickness;
+		if (maxThickness <= 0)
+		{
+			maxThickness = 1;
+		}
+		if (maxWidth <= 0)
+		{
+			maxWidth = 1;
+		}
+		operator[](v0).nodeThickness = maxThickness;
+		operator[](v0).nodeWidth = maxWidth;
 
 
 		boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(v1, *this);
 
 		maxThickness = -1;
+		maxWidth = -1;
 		while (adjIt != adjEnd)
 		{
 			bool exists;
@@ -530,9 +641,21 @@ namespace Roots
 			boost::tie(adjEdge, exists) = boost::edge(v1, *adjIt, *this);
 
 			maxThickness = std::max(maxThickness, operator[](adjEdge).averageThickness);
+			maxWidth = std::max(maxWidth, operator[](adjEdge).averageWidth);
+			++adjIt;
 		}
-		operator[](v1).nodeSize = maxThickness;
+		if (maxThickness <= 0)
+		{
+			maxThickness = 1;
+		}
+		if (maxWidth <= 0)
+		{
+			maxWidth = 1;
+		}
+		operator[](v1).nodeThickness = maxThickness / 2.0;
+
 		
+
 		pythonUpToDate = false;
 	}
 
@@ -552,7 +675,7 @@ namespace Roots
 
 	void BMetaGraph::findAndLabelConnectedComponents()
 	{
-		//std::cout << "Computing connected components" << std::endl;
+		std::cout << "Computing connected components" << std::endl;
 
 		mComponentMap.resize(vertNodeMap.size(), 0);
 		int numVertices = boost::num_vertices(*this);
@@ -604,6 +727,7 @@ namespace Roots
 	void BMetaGraph::ConnectComponents(int compOne, int compTwo)
 	{
 		int lowerComponent = std::min(compOne, compTwo);
+		int higherComponent = std::max(compOne, compTwo);
 		metaVertIter mvi = boost::vertices(*this);
 
 		for (; mvi.first != mvi.second; ++mvi)
@@ -612,6 +736,10 @@ namespace Roots
 			if (nodeComponent == compOne || nodeComponent == compTwo)
 			{
 				operator[](*mvi.first).connectedComponent = lowerComponent;
+			}
+			if (nodeComponent > higherComponent)
+			{
+				operator[](*mvi.first).connectedComponent--;
 			}
 		}
 	}
@@ -636,6 +764,19 @@ namespace Roots
 		}
 	}
 
+	void BMetaGraph::FindMinimumSpanningTree()
+	{
+		mMinimumSpanningTree = {};
+
+		kruskal_minimum_spanning_tree(*this, std::back_inserter(mMinimumSpanningTree),
+			weight_map(get(&BMetaEdge::averageThickness, *this)));
+	}
+
+	int BMetaGraph::GetNumEdgesToBreak()
+	{
+		return m_edges.size() - mMinimumSpanningTree.size();
+	}
+
 	void BMetaGraph::JoinOperation(Point3d p1picked, Point3d p2picked)
 	{
 		
@@ -653,7 +794,56 @@ namespace Roots
 		bridgeVerts.push_back(p2picked.id);
 		MetaV node1 = vertNodeMap[p1picked.id];
 		MetaV node2 = vertNodeMap[p2picked.id];
-		addEdge(node1, node2, bridgeVerts, &mSkeleton);
+		MetaE newMetaEdge = addEdge(node1, node2, bridgeVerts, &mSkeleton);
+
+		BSkeleton::adjacency_iterator adjIt, adjEnd;
+		boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(p1picked.id, mSkeleton);
+		float avgThick1=0.0, avgWidth1=0.0;
+		int count1 = 0;
+		for (; adjIt != adjEnd; ++adjIt)
+		{
+			SkelEdge e;
+			bool exists;
+			boost::tie(e, exists) = boost::edge(p1picked.id, *adjIt, mSkeleton);
+			if (exists)
+			{
+				avgThick1 += mSkeleton[e].thickness;
+				avgWidth1 += mSkeleton[e].width;
+			}
+			++count1;
+		}
+		avgThick1 /= count1;
+		avgWidth1 /= count1;
+
+
+		boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(p2picked.id, mSkeleton);
+		float avgThick2 = 0.0, avgWidth2 = 0.0;
+		int count2 = 0;
+		for (; adjIt != adjEnd; ++adjIt)
+		{
+			SkelEdge e;
+			bool exists;
+			boost::tie(e, exists) = boost::edge(p2picked.id, *adjIt, mSkeleton);
+			if (exists)
+			{
+				avgThick2 += mSkeleton[e].thickness;
+				avgWidth2 += mSkeleton[e].width;
+			}
+			++count2;
+		}
+		avgThick2 /= count2;
+		avgWidth2 /= count2;
+
+		RootAttributes newAttributes = RootAttributes((avgThick1 + avgThick2) / 2.0, (avgWidth1 + avgWidth2) / 2.0, p1picked, p2picked);
+
+
+
+		SkelEdge newSkelEdge = mSkeleton.addEdge(p1picked.id, p1picked.id, newAttributes);
+
+		operator[](newMetaEdge).mEdges.push_back(newAttributes);
+		ConnectComponents(operator[](node1).connectedComponent, operator[](node2).connectedComponent);
+
+		
 
 		//join the components of the two nodes that have been picked
 		//int componentOne = operator[](node1).connectedComponent;
@@ -663,7 +853,6 @@ namespace Roots
 		//	ConnectComponents(componentOne, componentTwo);
 		//}
 
-		//findAndLabelConnectedComponents();
 
 		//attempt to bridge both of the adjoining nodes (eg. if they are degree 2, then remove them
 		//from the metagraph to be replaced by a single edge
@@ -679,9 +868,15 @@ namespace Roots
 		MetaE e;
 		bool exists;
 		boost::tie(e, exists) = boost::edge(toBreak.node0, toBreak.node1, *this);
+		
 		if (exists)
 		{
+			std::cout << "Matching edge found to break" << std::endl;
 			removeEdge(e);
+		}
+		else
+		{
+			std::cout << "No matching edge found to break" << std::endl;
 		}
 		BridgeNode(toBreak.node0);
 		BridgeNode(toBreak.node1);
@@ -690,7 +885,7 @@ namespace Roots
 		return;
 	}
 
-	void BMetaGraph::SplitOperation(MetaEdge3d toSplit, boost::python::list connectedEdges)
+	void BMetaGraph::SplitOperation(MetaEdge3d toSplit, std::vector<MetaEdge3d> connectedEdges)
 	{
 		MetaE dupE;
 		MetaV dupV0, dupV1;
@@ -700,9 +895,9 @@ namespace Roots
 		if (exists)
 		{
 			duplicateEdge(srcE, &mSkeleton, dupV0, dupV1, dupE);
-			for (int i = 0; i < boost::python::len(connectedEdges); ++i)
+			for (int i = 0; i < connectedEdges.size(); ++i)
 			{
-				MetaEdge3d srcEdge = boost::python::extract<MetaEdge3d>(connectedEdges[i]);
+				MetaEdge3d srcEdge =connectedEdges[i];
 				int srcNode, oldTarget, newTarget;
 				//if the srcEdge node0 is equal to either of the nodes on the splitting edge, then 
 				//we will break the connection between srcEdge node0 and node1, and create a new edge
@@ -730,6 +925,23 @@ namespace Roots
 					removeEdge(removeE);
 					addEdge(srcNode, newTarget, verts, &mSkeleton);
 				}
+				BMetaNode &newNode = operator[](newTarget);
+				BMetaNode &goTowardsNode = operator[](srcNode);
+				float deltaX = goTowardsNode.x - newNode.x;
+				float deltaY = goTowardsNode.y - newNode.y;
+				float deltaZ = goTowardsNode.z - newNode.z;
+				float deltaNorm = sqrt(deltaX*deltaX + deltaY * deltaY + deltaZ * deltaZ);
+				float xProp = deltaX / deltaNorm;
+				float yProp = deltaY / deltaNorm;
+				float zProp = deltaZ / deltaNorm;
+
+				float xDist = std::min(abs(xProp *toSplit.avgThickness * 2.0), abs(deltaX / 3.0));
+				float yDist = std::min(abs(yProp *toSplit.avgThickness * 2.0), abs(deltaY / 3.0));
+				float zDist = std::min(abs(zProp *toSplit.avgThickness * 2.0), abs(deltaZ / 3.0));
+
+				newNode.x += xProp < 0 ? -xDist : xDist;
+				newNode.y += yProp < 0 ? -yDist : yDist;
+				newNode.z += zProp < 0 ? -zDist : zDist;
 				
 			}
 
@@ -742,7 +954,6 @@ namespace Roots
 			BridgeNode(dupV0);
 			BridgeNode(dupV1);
 
-			findAndLabelConnectedComponents();
 			pythonUpToDate = false;
 		}
 		return;
@@ -750,6 +961,8 @@ namespace Roots
 
 	void BMetaGraph::BridgeNode(MetaV nodeToBridge)
 	{
+		std::cout << "Bridging disabled" << std::endl;
+		return;
 		if (boost::degree(nodeToBridge, *this) == 2)
 		{
 			BMetaGraph::out_edge_iterator outIt, outEnd;
@@ -764,6 +977,7 @@ namespace Roots
 			removeEdge(e1);
 			removeEdge(e2);
 			removeNode(nodeToBridge);
+
 		}
 	}
 
@@ -792,6 +1006,98 @@ namespace Roots
 
 		return operator[](node1).connectedComponent;
 	}
+
+
+	void BMetaGraph::bridgeUtil(int u, bool visited[], int disc[],
+		int low[], int parent[], std::vector<std::pair<MetaV, MetaV>> &bridgeNodes)
+	{
+		// A static variable is used for simplicity, we can 
+		// avoid use of static variable by passing a pointer.
+		static int time = 0;
+
+		// Mark the current node as visited
+		visited[u] = true;
+
+		// Initialize discovery time and low value
+		disc[u] = low[u] = ++time;
+
+		// Go through all vertices aadjacent to this
+		BMetaGraph::adjacency_iterator adjIt, adjEnd;
+		boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(u, *this);
+		
+		for (; adjIt != adjEnd; ++adjIt)
+		{
+			int v = *adjIt;
+
+			if (!visited[v])
+			{
+				parent[v] = u;
+				bridgeUtil(v, visited, disc, low, parent, bridgeNodes);
+
+				low[u] = std::min(low[u], low[v]);
+
+				if (low[v] > disc[u])
+				{
+					bridgeNodes.push_back(std::make_pair(u, v));
+					//std::cout << u << " " << v << std::endl;
+				}
+			}
+			else if (v != parent[u])
+			{
+				low[u] = std::min(low[u], disc[v]);
+			}
+		}
+	}
+
+	// DFS based function to find all bridges. It uses recursive 
+	// function bridgeUtil()
+	void BMetaGraph::bridge()
+	{
+		// Mark all the vertices as not visited
+		bool *visited = new bool[m_vertices.size()];
+		int *disc = new int[m_vertices.size()];
+		int *low = new int[m_vertices.size()];
+		int *parent = new int[m_vertices.size()];
+
+		boost::python::list bridgeEdges = boost::python::list();
+
+		// Initialize parent and visited arrays
+		for (int i = 0; i < m_vertices.size(); i++)
+		{
+			parent[i] = -1;
+			visited[i] = false;
+		}
+
+		std::vector<std::pair<MetaV, MetaV>> bridgeNodes = {};
+
+		std::cout << "==================Bridges exist between the following vertices==================" << std::endl;
+		// Call the recursive helper function to find Bridges
+		// in DFS tree rooted with vertex 'i'
+		for (int i = 0; i < m_vertices.size(); i++)
+			if (visited[i] == false)
+				bridgeUtil(i, visited, disc, low, parent, bridgeNodes);
+
+		
+		for each(auto nodepair in bridgeNodes)
+		{
+			MetaE e;
+			bool exists;
+			boost::tie(e, exists) = boost::edge(nodepair.first, nodepair.second, *this);
+
+			if (exists)
+			{
+				operator[](e).isBridge = true;
+			}
+			
+		}
+
+		delete[] visited;
+		delete[] disc;
+		delete[] low;
+		delete[] parent;
+		std::cout << "==================End Bridges==================" << std::endl;
+	}
+
 	
 }
 
@@ -800,11 +1106,14 @@ PyMetaGraph::PyMetaGraph(std::string filename)
 {
 	mGraph = Roots::BMetaGraph(filename);
 	mSkeleton = PySkeleton(&mGraph.mSkeleton);
+	mGraph.findAndLabelConnectedComponents();
+	reload();
 }
 
 void PyMetaGraph::initializeFromSkeleton()
 {
 	mGraph.initializeFromSkeleton();
+	mGraph.findAndLabelConnectedComponents();
 	reload();
 }
 
@@ -820,6 +1129,7 @@ void PyMetaGraph::joinOperation(int v0, int v1)
 	Point3d p1 = mGraph.mSkeleton[v0];
 	Point3d p2 = mGraph.mSkeleton[v1];
 	mGraph.JoinOperation(p1, p2);
+	//mSkeleton = PySkeleton(&mGraph.mSkeleton);
 	reload();
 
 }
@@ -827,7 +1137,18 @@ void PyMetaGraph::joinOperation(int v0, int v1)
 void PyMetaGraph::breakOperation(Roots::MetaEdge3d edge)
 {
 	//std::cout << "Attempting to break edge between " << edge.node0 << " " << edge.node1 << std::endl;
+	std::cout << "Breaking edge between " << edge.node0 << " and " << edge.node1 << ". This is the " << edge.order << "th edge." << std::endl;
 	mGraph.BreakOperation(edge);
+	mGraph.findAndLabelConnectedComponents();
+	reload();
+}
+
+void PyMetaGraph::splitOperation(Roots::MetaEdge3d toSplit, boost::python::list connectedEdgeSet)
+{
+	std::vector<Roots::MetaEdge3d> edgeSet = toStdVector<Roots::MetaEdge3d>(connectedEdgeSet);
+	mGraph.SplitOperation(toSplit, edgeSet);
+	this->mSkeleton = PySkeleton(&mGraph.mSkeleton);
+	mGraph.findAndLabelConnectedComponents();
 	reload();
 }
 
@@ -835,8 +1156,12 @@ void PyMetaGraph::reload()
 {
 	if (!mGraph.pythonUpToDate)
 	{
-		mGraph.findAndLabelConnectedComponents();
+		//mGraph.findAndLabelConnectedComponents();
 		//std::cout << "Entering boost python update loop " << std::endl;
+		mGraph.FindMinimumSpanningTree();
+		//std::cout << "Num edges to break " << mGraph.GetNumEdgesToBreak() << std::endl;
+		numEdgesToBreak = mGraph.GetNumEdgesToBreak();
+		mGraph.bridge();
 		mMetaNodeLocations = boost::python::list();
 		mMetaEdgeConnections = boost::python::list();
 		std::vector<Roots::MetaNode3d> metaNodeLocs = {};
@@ -864,7 +1189,9 @@ void PyMetaGraph::reload()
 			//std::cout << curNode.mSrcVert << std::endl;
 			//std::cout << "Successfully accessed meta node " << std::endl;
 
-			Roots::MetaNode3d toAdd = Roots::MetaNode3d(mGraph[*mvi.first], &mGraph.mSkeleton, vertI);
+			int nodeDegree = boost::degree(*mvi.first, mGraph);
+
+			Roots::MetaNode3d toAdd = Roots::MetaNode3d(mGraph[*mvi.first], &mGraph.mSkeleton, vertI, nodeDegree);
 			//std::cout << toAdd << std::endl;
 			metaNodeLocs.push_back(toAdd);
 
@@ -875,7 +1202,7 @@ void PyMetaGraph::reload()
 				tempComponentNodesOfInterestMap[toAdd.connectedComponent] = boost::python::list();
 			}
 			//std::cout << "Finding node degree for " << *mvi.first << "th node.  It is : ";
-			int nodeDegree = boost::degree(*mvi.first, mGraph);
+			
 			//std::cout << nodeDegree << std::endl;
 			if (nodeDegree < 2)
 			{
@@ -894,7 +1221,7 @@ void PyMetaGraph::reload()
 			MetaE edge = *mei.first;
 			Roots::BMetaEdge srcEdge = mGraph[edge];
 			Roots::MetaEdge3d toAdd = Roots::MetaEdge3d(edge.m_source, edge.m_target,
-				srcEdge.getAvgThickness(), mGraph.GetEdgeComponent(edge), edgeI, srcEdge.mEdges);
+				srcEdge.getAvgThickness(), srcEdge.averageWidth, mGraph.GetEdgeComponent(edge), edgeI, srcEdge.mEdges, srcEdge.isBridge);
 			metaEdgeCons.push_back(toAdd);
 			//mMetaEdgeConnections.append<MetaEdge3d>(toAdd);
 

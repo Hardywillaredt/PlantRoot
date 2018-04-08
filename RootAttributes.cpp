@@ -54,21 +54,16 @@ namespace Roots
 		v1id = v1.id;
 	}
 
-	RootAttributes::RootAttributes(float aThickness, float aWidth, float aLength, Point3d v0, Point3d v1)
+	RootAttributes::RootAttributes(float aThickness, float aWidth, Point3d v0, Point3d v1)
 	{
-		/*data = boost::python::list();
-		for (int i = 0; i < NumAttributes; ++i)
-		{
-			data.append<float>(0.0);
-		}*/
+		
 		thickness = aThickness;
 		width = aWidth;
-		length = aLength;
-		/*data[Thickness] = aThickness;
-		data[Width] = aWidth;
-		data[Length] = aLength;*/
 		Point3d dif = v0 - v1;
 		euclidLength = dif.mag();
+
+		length = euclidLength;
+
 		v0id = v0.id;
 		v1id = v1.id;
 	}
@@ -95,10 +90,14 @@ namespace Roots
 
 	bool RootAttributes::operator==(RootAttributes& second)
 	{
-		bool same = false;
-		if (thickness == second.thickness && width == second.width && length == second.length)
+		bool same = true;
+		if (thickness != second.thickness || width != second.width || length != second.length)
 		{
-			same = true;
+			same = false;
+		}
+		if (v0id != second.v0id || v1id != second.v1id)
+		{
+			same = false;
 		}
 		/*for (int i = 0; i < NumAttributes; ++i)
 		{

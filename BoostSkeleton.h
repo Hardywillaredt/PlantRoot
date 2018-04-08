@@ -156,6 +156,10 @@ struct PySkeleton
 {
 	float radius;
 	Point3d center;
+	float minThickness, maxThickness, minWidth, maxWidth, minRatio, maxRatio;
+
+	boost::python::list thicknessPercentiles, widthPercentiles, ratioPercentiles;
+
 	boost::python::list mVertexList;
 	boost::python::list mEdgeList;
 

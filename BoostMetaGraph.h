@@ -3,7 +3,54 @@
 #include "BoostSkeleton.h"
 #include "boost/python.hpp"
 
+#include <GLFW/glfw3.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <map>
 
+#include "Sphere.h"
+
+typedef GLuint GLLineIndex;
+typedef GLuint GLVertexIndex;
+
+
+enum ColorizationOptions
+{
+	ByThickness = 0,
+	ByWidth = 1,
+	ByRatio = 2,
+	ByDegree = 3,
+	ByComponent = 4
+};
+
+enum OperationModes
+{
+	None = 0,
+	Connection = 1,
+	AddNodes = 2,
+	Break = 3,
+	Split = 4
+};
+
+struct NodeVisualizationOptions
+{
+	bool show;
+	bool highlightEndpoints;
+	bool highlightJunctions;
+	ColorizationOptions colorization;
+	boost::python::list heatmap;
+	float baseScale;
+	float highlightScale;
+};
+
+struct EdgeVisualizationOptions
+{
+	bool show;
+	ColorizationOptions colorization;
+	boost::python::list heatmap;
+	float baseScale;
+	float highlightScale;
+};
 
 namespace Roots
 {
@@ -11,8 +58,11 @@ namespace Roots
 	{
 		SkelVert mSrcVert;
 		BSkeleton* mSrcSkeleton;
+		bool hasGeom;
+		float x, y, z;
 		int connectedComponent;
-		float nodeSize;
+		float nodeThickness;
+		float nodeWidth;
 
 		BMetaNode();
 		BMetaNode(SkelVert srcId, BSkeleton *skel);
@@ -24,10 +74,21 @@ namespace Roots
 		std::vector<SkelVert> mVertices;
 		std::vector<RootAttributes> mEdges;
 		//BSkeleton *mSrcSkeleton;
-		float averageThickness;
+		float averageThickness, averageWidth;
+		bool isBridge;
+
+		int node0, node1;
+		int id;
+		int component;
+
+		GLVertexIndex glEdgeVerticesStart, glEdgeVerticesEnd;
+		GLLineIndex glEdgeLinesStart, glEdgeLinesEnd;
+		bool isPartOfLinesList;
+
+
 
 		BMetaEdge();
-		BMetaEdge(std::vector<SkelVert> vertices, BSkeleton* srcSkeleton);
+		BMetaEdge(std::vector<SkelVert> vertices, BSkeleton* srcSkeleton, std::vector<GLfloat> &edgeVertices, std::vector<GLVertexIndex> &edgeIndices);
 		BMetaEdge join(BMetaEdge &other, BSkeleton* srcSkeleton);
 		float getAvgThickness();
 		SkelVert start();
@@ -38,21 +99,24 @@ namespace Roots
 	{
 		int connectedComponent;
 		int order;
-		float nodeSize;
+		float nodeThickness;
+		float nodeWidth;
+		int degree;
 		MetaNode3d();
-		MetaNode3d(BMetaNode srcNode, BSkeleton *srcSkel, int aOrder);
+		MetaNode3d(BMetaNode srcNode, BSkeleton *srcSkel, int aOrder, int aDegree);
 	};
 
 	struct MetaEdge3d
 	{
 		int node0, node1;
-		float avgThickness;
+		float avgThickness, avgWidth;
 		int connectedComponent;
 		int order;
 		boost::python::list edges;
+		bool isBridge;
 
 		MetaEdge3d();
-		MetaEdge3d(int n0, int n1, float thickness, int connectedComponent, int aOrder, std::vector<RootAttributes> aEdges);
+		MetaEdge3d(int n0, int n1, float thickness, float width, int connectedComponent, int aOrder, std::vector<RootAttributes> aEdges, bool aIsBridge);
 	};
 }
 
@@ -75,11 +139,29 @@ namespace Roots{
 
 		//vector correlating each edge to a connected component
 		std::vector<int> mComponentMap;
+		std::vector<MetaE> mMinimumSpanningTree;
 
 		//map backwards from the duplicated element to the src element
 		//these maps are only to be used for writing out the files
 		std::map<MetaE, MetaE> mDuplicateEdgeMap;
 		std::map<MetaV, MetaV> mDuplicateNodeMap;
+
+
+		//visualization and drawing options
+		EdgeVisualizationOptions edgeOptions;
+		NodeVisualizationOptions nodeOptions;
+		drawing::VBOSphere drawSphere;
+
+		//vbo objects
+		std::vector<GLfloat> edgeVertices;
+		int numEdges;
+		std::vector<GLfloat> edgeColors;
+		std::vector<GLuint> highlightEdges;
+		std::vector<GLuint> baseEdges;
+		
+
+		void drawEdges();
+		void drawNodes();
 
 		bool pythonUpToDate;
 
@@ -188,6 +270,16 @@ namespace Roots{
 		*/
 		void FixUpComponents();
 
+		
+
+		void FindMinimumSpanningTree();
+
+		int GetNumEdgesToBreak();
+
+		void bridgeUtil(int u, bool visited[], int disc[],
+			int low[], int parent[], std::vector<std::pair<MetaV, MetaV>> &bridgeNodes);
+
+		void bridge();
 		/*
 		This method should support the first operation for this tool - making new connections 
 		between isolated components.  Provided two meta nodes, create a new connection between them.
@@ -212,7 +304,7 @@ namespace Roots{
 		This set of connected edges edges at the source and target nodes will then be disconnected from the
 		source edge, and reconnected to a duplicate of the central edge.
 		*/
-		void SplitOperation(MetaEdge3d toSplit, boost::python::list connectedEdgeSet);
+		void SplitOperation(MetaEdge3d toSplit, std::vector<MetaEdge3d> connectedEdgeSet);
 	
 	private:
 		/*
@@ -244,8 +336,13 @@ struct PyMetaGraph
 	boost::python::dict componentNodeMap;
 	boost::python::dict componentEdgeMap;
 	boost::python::dict componentNodesOfInterestMap;
+	int numEdgesToBreak;
 	
 	PyMetaGraph(std::string filename);
+
+	boost::python::list getComponentNodes(int component);
+	boost::python::list getComponentEdges(int component);
+	
 
 	void initializeFromSkeleton();
 	void reload();

@@ -238,6 +238,10 @@ namespace Roots
 			{
 				attributedata[att] = boost::lexical_cast<float>(words[2 + att]);
 			}
+			if (words.size() < 2 + NumAttributes)
+			{
+				std::cout << "Edge: " << i << "at line: " << lineOn << " may be missing attribution" << std::endl;
+			}
 			//std::cout << "Edge between " << v0 << " " << v1 << std::endl;
 			Point3d p0 = Point3d(), p1 = Point3d();
 			if (m_vertices.size() > v1 && m_vertices.size() > v0)
@@ -246,11 +250,9 @@ namespace Roots
 				SkelVert bv1 = boost::vertex(v1, *this);
 				p0 = operator[](bv0);
 				p1 = operator[](bv1);
-
+				addEdge(v0, v1, RootAttributes(attributedata, p0, p1));
 			}
 
-			
-			addEdge(v0, v1, RootAttributes(attributedata, p0, p1));
 		}
 	}
 
@@ -388,6 +390,16 @@ namespace Roots
 PySkeleton::PySkeleton()
 {
 	mSkeleton = nullptr;
+	minThickness = 0;
+	maxThickness = 0;
+	minWidth = 0;
+	maxWidth = 0;
+	minRatio = 0;
+	maxRatio = 0;
+	thicknessPercentiles = boost::python::list();
+	widthPercentiles = boost::python::list();
+	ratioPercentiles = boost::python::list();
+
 }
 
 PySkeleton::PySkeleton(Roots::BSkeleton *srcSkel)
@@ -408,6 +420,21 @@ void PySkeleton::reload()
 	center = Point3d();
 	mVertexList = boost::python::list();
 	mEdgeList = boost::python::list();
+
+	thicknessPercentiles = boost::python::list();
+	widthPercentiles = boost::python::list();
+	ratioPercentiles = boost::python::list();
+
+	minThickness = 100000;
+	maxThickness = 0;
+	minWidth = 100000;
+	maxWidth = 0;
+	minRatio = 100000;
+	maxRatio = 0;
+
+	std::vector<float> thicknessList = {};
+	std::vector<float> widthList = {};
+	std::vector<float> ratioList = {};
 	//std::cout << "reloading" << std::endl;
 	if (mSkeleton == nullptr)
 	{
@@ -424,9 +451,39 @@ void PySkeleton::reload()
 	for (skelEdgeIter sei = boost::edges(*mSkeleton); sei.first != sei.second; ++sei)
 	{
 		Roots::RootAttributes rootAdded = mSkeleton->operator[](*sei.first);
+		minThickness = std::min(rootAdded.thickness, minThickness);
+		maxThickness = std::max(rootAdded.thickness, maxThickness);
+		thicknessList.push_back(rootAdded.thickness);
+
+		minWidth = std::min(rootAdded.width, minWidth);
+		maxWidth = std::max(rootAdded.width, maxWidth);
+		widthList.push_back(rootAdded.width);
+
+		minRatio = std::min(rootAdded.thickness / rootAdded.width, minRatio);
+		maxRatio = std::max(rootAdded.thickness / rootAdded.width, maxRatio);
+		ratioList.push_back(rootAdded.thickness / rootAdded.width);
+
 		//std::cout << "Root reloaded " << rootAdded << std::endl;
 		mEdgeList.append<Roots::RootAttributes>(rootAdded);
 	}
+
+	std::sort(thicknessList.begin(), thicknessList.end());
+	std::sort(widthList.begin(), widthList.end());
+	std::sort(ratioList.begin(), ratioList.end());
+
+	for (int i = 0; i < 11; ++i)
+	{
+		float fi = i;
+		int idx = (fi / 10.0) * thicknessList.size();
+		idx -= 1;
+		idx = std::max(idx, 0);
+		thicknessPercentiles.append<float>(thicknessList[idx]);
+		widthPercentiles.append<float>(widthList[idx]);
+		ratioPercentiles.append<float>(ratioList[idx]);
+	}
+
+
+	std::cout << "min thickness " << minThickness << " max thickness " << maxThickness << " min width " << minWidth << " max width " << maxWidth << " min ratio " << minRatio << " max ratio " << maxRatio << std::endl;
 	radius = mSkeleton->mRadius;
 	center = mSkeleton->mCenter;
 }
