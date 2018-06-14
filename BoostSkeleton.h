@@ -9,6 +9,9 @@
 #include "boost/config.hpp"
 #include "boost/graph/undirected_graph.hpp"
 #include "boost/graph/lookup_edge.hpp"
+#include <stdlib.h>
+#include <GLFW/glfw3.h>
+#include <stdio.h>
 
 namespace
 {
@@ -16,6 +19,46 @@ namespace
 	typedef boost::graph_traits<BoostSkeleton>::vertex_descriptor SkelVert;
 	typedef boost::graph_traits<BoostSkeleton>::edge_descriptor SkelEdge;
 }
+
+typedef boost::graph_traits<BoostSkeleton>::vertex_iterator skelVIter;
+typedef boost::graph_traits<BoostSkeleton>::edge_iterator skelEIter;
+
+struct skelVertIter : std::pair<skelVIter, skelVIter>
+{
+	skelVertIter(const std::pair<skelVIter, skelVIter> &other)
+		:std::pair<skelVIter, skelVIter>(other)
+	{
+	}
+	skelVertIter operator++()
+	{
+		++this->first;
+		return *this;
+	}
+	skelVertIter operator--()
+	{
+		--this->second;
+		return *this;
+	}
+};
+
+struct skelEdgeIter : std::pair<skelEIter, skelEIter>
+{
+	skelEdgeIter(const std::pair<skelEIter, skelEIter> &other)
+		:std::pair<skelEIter, skelEIter>(other)
+	{
+	}
+	skelEdgeIter operator++()
+	{
+		++this->first;
+		return *this;
+	}
+
+	skelEdgeIter operator--()
+	{
+		--this->second;
+		return *this;
+	}
+};
 
 
 
@@ -35,17 +78,22 @@ namespace Roots
 		/*Geometric radius of the bounding sphere defined by the */
 		float mRadius;
 
+		
+
 		static std::string beginSkeletonString;
 		static std::string endSkeletonString;
 		static std::string vertexString;
 		static std::string edgeString;
 		static std::string endHeaderString;
+		static std::string beginPlyString;
 
 		/*vvvvvvvvvvvvvvvvvvvvv CONSTRUCTORS vvvvvvvvvvvvvvvvvvvvv*/
 		
 		/*default constructor.  Only constructor defined.  All operations such as loading or 
 		adding edges should be done with appropriate member functions*/
 		BSkeleton();
+
+		void Initialize();
 
 		/*vvvvvvvvvvvvvvvvvvvvv LOADERS AND SAVERS vvvvvvvvvvvvvvvvvvvvv*/
 
@@ -59,7 +107,7 @@ namespace Roots
 
 		returns - line number after the last line consumed for the loading process
 		*/
-		int loadFromLines(std::vector<std::string> lines, int startingLine);
+		int loadFromLines(std::vector<std::string> lines, int startingLine, std::vector<GLfloat> &glVertices);
 
 		/*
 		External save operation, only save functionality for this class.
@@ -76,20 +124,22 @@ namespace Roots
 
 		Parameters and return same as LoadFromLines
 		*/
-		int loadWenzhenLines(std::vector<std::string> lines, int startingLine = 0);
+		int loadWenzhenLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine = 0);
+
+		int loadDanPly(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine = 0);
 
 		/*
 		Internal load operation for Ply-style skeletons.
 
 		Parameters and returns same as LoadFromLines
 		*/
-		int loadPlyStyleLines(std::vector<std::string> lines, int startingLing = 0);
+		int loadPlyStyleLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLing = 0);
 
 		/*Simple callout function to load all vertices described by the provided set of lines.*/
 		void loadVertices(std::vector<std::string> lines, int &lineOn, int numVertices);
 		
 		/*Simple callout function to load all edges described by the provided set of lines.*/
-		void loadEdges(std::vector<std::string> lines, int &lineOn, int numEdges);
+		void loadEdges(std::vector<std::string> lines, int &lineOn, int numEdges, std::vector<GLfloat> &glVertices);
 
 
 	public:
@@ -97,7 +147,7 @@ namespace Roots
 		alias that both adds the connection between v0 and v1 in the boost graph,
 		and the decoration edge_descriptor for the root attributes
 		*/
-		SkelEdge addEdge(int v0, int v1, RootAttributes attributes);
+		SkelEdge addEdge(int v0, int v1, RootAttributes attributes, std::vector<GLfloat> &glVertices);
 
 		/*
 		alias that both adds a new vertex to the boost graph, and adds the decoration
@@ -127,7 +177,7 @@ namespace Roots
 		Parameters:
 		newCenter - the desired centerpoint of the result graph
 		*/
-		BSkeleton recenterSkeleton(Point3d newCenter = Point3d());
+		BSkeleton recenterSkeleton(Point3d newCenter, std::vector<float> &vertices);
 
 	
 
@@ -149,6 +199,8 @@ namespace Roots
 		Finds all vertices of degree != 2
 		*/
 		std::vector<SkelVert> GetNotableVertices();
+
+		void normalizeEdgeAttributes();
 	};
 }
 

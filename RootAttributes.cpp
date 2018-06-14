@@ -20,6 +20,8 @@ namespace Roots
 		euclidLength = 0.0;
 		v0id = 0;
 		v1id = 0;
+		glV0 = 0;
+		glV1 = 1;
 	}
 
 	RootAttributes::RootAttributes(float * aData, Point3d v0, Point3d v1)
@@ -36,6 +38,8 @@ namespace Roots
 		euclidLength = dif.mag();
 		v0id = v0.id;
 		v1id = v1.id;
+		glV0 = 0;
+		glV1 = 0;
 	}
 
 	RootAttributes::RootAttributes(std::vector<float> aData, Point3d v0, Point3d v1)
@@ -52,6 +56,8 @@ namespace Roots
 		euclidLength = dif.mag();
 		v0id = v0.id;
 		v1id = v1.id;
+		glV0 = 0;
+		glV1 = 0;
 	}
 
 	RootAttributes::RootAttributes(float aThickness, float aWidth, Point3d v0, Point3d v1)
@@ -66,6 +72,8 @@ namespace Roots
 
 		v0id = v0.id;
 		v1id = v1.id;
+		glV0 = 0;
+		glV1 = 0;
 	}
 
 	//RootAttributes::RootAttributes(Json::Value rootJson)

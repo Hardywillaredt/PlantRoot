@@ -66,58 +66,112 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 }
-int main(void)
+int main(int argc, char **argv)
 {
-	GLFWwindow* window;
-	glfwSetErrorCallback(error_callback);
-	if (!glfwInit())
-		exit(EXIT_FAILURE);
-	window = glfwCreateWindow(640, 480, "Simple example", NULL, NULL);
-	if (!window)
+	if (argc == 2)
 	{
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
-	glfwMakeContextCurrent(window);
-	glfwSwapInterval(1);
-	glfwSetKeyCallback(window, key_callback);
-	drawing::VBOSphere sphere = drawing::VBOSphere(1.0, 0.0, 1.0, 1.0, 0.5, 3);
-	GLfloat color[4] = { 1.0, 0.0, 1.0, 1.0 };
-	GLfloat lightPos[3] = { 10, 10, 10 };
-	while (!glfwWindowShouldClose(window))
-	{
-		float ratio;
-		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
-		glEnable(GL_LIGHTING);
-		glEnable(GL_LIGHT0);
+		char * filename = argv[1];
+		std::string fileString = std::string(filename);
 
-		glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+		Roots::BMetaGraph mgraph = Roots::BMetaGraph();
+		mgraph.loadFromFile(filename);
+		metaEdgeIter mei = boost::edges(mgraph);
+		for (; mei.first != mei.second; ++mei)
+		{
+			MetaE e = *mei.first;
+			if (boost::degree(e.m_source, mgraph) >= 3 && boost::degree(e.m_target, mgraph) >= 3)
+			{
+				MetaV v0 = e.m_source;
+				MetaV v1 = e.m_target;
+				BMetaGraph::adjacency_iterator adjIt, adjEnd;
+				boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(v0, mgraph);
+				MetaE e0;
+				bool exists = false;
+				for (; adjIt != adjEnd; ++adjIt)
+				{
+					boost::tie(e0, exists) = boost::edge(*adjIt, v0, mgraph);
+					if (e0 != e)
+					{
+						break;
+					}
+				}
+				MetaE e1;
+				boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(v1, mgraph);
+				for (; adjIt != adjEnd; ++adjIt)
+				{
+					boost::tie(e1, exists) = boost::edge(*adjIt, v1, mgraph);
+					if (e1 != e)
+					{
+						break;
+					}
+				}
 
-		ratio = width / (float)height;
-		glViewport(0, 0, width, height);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, 10000.f);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, color);
-		glColor4f(color[0], color[1], color[2], color[3]);
-		sphere.draw();
-		//glRotatef((float)glfwGetTime() * 50.f, 0.f, 0.f, 1.f);
-		//glBegin(GL_TRIANGLES);
-		//glColor3f(1.f, 0.f, 0.f);
-		//glVertex3f(-0.6f, -0.4f, 0.f);
-		//glColor3f(0.f, 1.f, 0.f);
-		//glVertex3f(0.6f, -0.4f, 0.f);
-		//glColor3f(0.f, 0.f, 1.f);
-		//glVertex3f(0.f, 0.6f, 0.f);
-		//glEnd();
-		glfwSwapBuffers(window);
-		glfwPollEvents();
+				mgraph.splitEdge = std::pair<MetaV, MetaV>(e.m_source, e.m_target);
+				mgraph.splitNeighbors = { std::pair<MetaV, MetaV>(e0.m_source, e0.m_target), std::pair<MetaV, MetaV>(e1.m_source, e1.m_target) };
+				mgraph.splitEdgeValid = true;
+				mgraph.SplitOperation();
+			}
+		}
+		
+		
+		//mgraph.breakEdge = std::pair<MetaV, MetaV>(e.m_source, e.m_target);
+		//mgraph.breakEdgeValid = true;
+		//mgraph.BreakOperation();
+
+		//GLFWwindow* window;
+		//glfwSetErrorCallback(error_callback);
+		//if (!glfwInit())
+		//	exit(EXIT_FAILURE);
+		//window = glfwCreateWindow(640, 480, "Simple example", NULL, NULL);
+		//if (!window)
+		//{
+		//	glfwTerminate();
+		//	exit(EXIT_FAILURE);
+		//}
+		//glfwMakeContextCurrent(window);
+		//glfwSwapInterval(1);
+		//glfwSetKeyCallback(window, key_callback);
+		//drawing::VBOSphere sphere = drawing::VBOSphere();
+		//GLfloat color[4] = { 1.0, 0.0, 1.0, 1.0 };
+		//GLfloat lightPos[3] = { 10, 10, 10 };
+		//while (!glfwWindowShouldClose(window))
+		//{
+		//	float ratio;
+		//	int width, height;
+		//	glfwGetFramebufferSize(window, &width, &height);
+		//	glEnable(GL_LIGHTING);
+		//	glEnable(GL_LIGHT0);
+
+		//	glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+
+		//	ratio = width / (float)height;
+		//	glViewport(0, 0, width, height);
+		//	glClear(GL_COLOR_BUFFER_BIT);
+		//	glMatrixMode(GL_PROJECTION);
+		//	glLoadIdentity();
+		//	glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, 10000.f);
+		//	glMatrixMode(GL_MODELVIEW);
+		//	glLoadIdentity();
+		//	/*glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, color);
+		//	glColor4f(color[0], color[1], color[2], color[3]);
+		//	sphere.draw();*/
+		//	mgraph.draw();
+		//	//glRotatef((float)glfwGetTime() * 50.f, 0.f, 0.f, 1.f);
+		//	//glBegin(GL_TRIANGLES);
+		//	//glColor3f(1.f, 0.f, 0.f);
+		//	//glVertex3f(-0.6f, -0.4f, 0.f);
+		//	//glColor3f(0.f, 1.f, 0.f);
+		//	//glVertex3f(0.6f, -0.4f, 0.f);
+		//	//glColor3f(0.f, 0.f, 1.f);
+		//	//glVertex3f(0.f, 0.6f, 0.f);
+		//	//glEnd();
+		//	glfwSwapBuffers(window);
+		//	glfwPollEvents();
+		//}
+		//glfwDestroyWindow(window);
+		//glfwTerminate();
+		//exit(EXIT_SUCCESS);
 	}
-	glfwDestroyWindow(window);
-	glfwTerminate();
-	exit(EXIT_SUCCESS);
+	
+
 }

@@ -33,12 +33,8 @@ namespace drawing
 	}
 }
 
-void drawing::VBOSphere::init(double red, double green, double blue, double alpha, double radius, int numSubdivisions)
+void drawing::VBOSphere::init(double radius, int numSubdivisions)
 {
-	r = red;
-	g = green;
-	b = blue;
-	a = alpha;
 	rad = radius;
 	subdivisions = numSubdivisions;
 	
@@ -61,14 +57,14 @@ void drawing::VBOSphere::init(double red, double green, double blue, double alph
 	
 }
 
-drawing::VBOSphere::VBOSphere(double red, double green, double blue, double alpha, double radius, int numSubdivisions)
+drawing::VBOSphere::VBOSphere(double radius, int numSubdivisions)
 {
-	init(red, green, blue, alpha, radius, numSubdivisions);
+	init(radius, numSubdivisions);
 }
 
 drawing::VBOSphere::VBOSphere()
 {
-	init(1.0, 0.0, 1.0, 1.0, 1, 1);
+	init(1.0, 1);
 }
 
 
@@ -88,11 +84,70 @@ void drawing::VBOSphere::draw()
 void drawing::VBOSphere::fancyDraw(float red, float green, float blue, float x, float y, float z, float scale)
 {
 	GLfloat color[4] = { red, green, blue, 1.0 };
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, color);
+	fancierDraw(color, x, y, z, scale);
 
+
+}
+
+void drawing::VBOSphere::fancierDraw(GLfloat* color, float x, float y, float z, float scale)
+{
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, color);
 	glTranslatef(x, y, z);
 	glScalef(scale, scale, scale);
 	draw();
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
+	glTranslatef(-x, -y, -z);
+}
+
+drawing::VBOCube::VBOCube(double radius)
+{
+	init(radius);
+}
+
+drawing::VBOCube::VBOCube()
+{
+	init(1.0);
+}
+
+void drawing::VBOCube::init(float radius)
+{
+	vertices = 
+	{
+		-radius, -radius, -radius,
+		-radius, -radius, radius,
+		 -radius, radius, radius ,
+		-radius, radius, -radius,
+		 radius, -radius, -radius ,
+		 radius, -radius, radius ,
+		 radius, radius, radius ,
+		 radius, radius, -radius 
+	};
+
+	indices =
+	{
+		0, 1, 2, 3,
+		4, 5, 6, 7,
+		0, 1, 5, 4,
+		1, 2, 6, 5,
+		2, 3, 7, 6,
+		3, 0, 4, 7
+	};
+}
+
+void drawing::VBOCube::fancierDraw(GLfloat* color, float x, float y, float z, float scale)
+{
+	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, color);
+	glTranslatef(x, y, z);
+	glScalef(scale, scale, scale);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
+
+	glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_INT, &indices[0]);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_NORMAL_ARRAY);
+
 	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);
 }
@@ -174,10 +229,6 @@ void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, 
 				normalStart[botRowVertexI * 3 + dim] = vertexStart[botRowVertexI * 3 + dim];
 				vertexStart[botRowVertexI * 3 + dim] *= radius;
 			}
-			if (botRowVertexI > 44)
-			{
-				std::cout << "Bot row vertex has exceeeded max " << std::endl;
-			}
 		}
 		for (int topRowVertexI = topRowVertexStartI; topRowVertexI < topRowVertexEndI; ++topRowVertexI)
 		{
@@ -202,10 +253,6 @@ void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, 
 			{
 				normalStart[topRowVertexI * 3 + dim] = vertexStart[topRowVertexI * 3 + dim];
 				vertexStart[topRowVertexI* 3 + dim] *= radius;
-			}
-			if (topRowVertexI > 44)
-			{
-				std::cout << "Top row vertex has exceeeded max " << std::endl;
 			}
 		}
 		
@@ -239,15 +286,6 @@ void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, 
 			isBotTriangle = !isBotTriangle;
 		}
 
-		GLuint indexDif = indexStart - &indices[0];
-		if (indexDif % 192 != 0)
-		{
-			std::cout << "Indexstart is not offset of 192 from indices start : dif is " << indexDif <<  " and side is " << side  << std::endl;
-		}
-		if (localIndex > 192)
-		{
-			std::cout << "global index outside of range " << std::endl;
-		}
 		
 	}
 }

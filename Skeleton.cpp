@@ -412,9 +412,9 @@ namespace Roots
 			float x, y, z;
 			for each(Point3d p in mVerts)
 			{
-				x = p.x;
-				y = p.y;
-				z = p.z;
+				x = p.x();
+				y = p.y();
+				z = p.z();
 
 				mLeftX = std::min(x, mLeftX);
 				mRightX = std::max(x, mRightX);
@@ -458,9 +458,9 @@ namespace Roots
 					Point3d sum = corners[k] + corners[i];
 					Point3d centerpoint = sum / 2;
 					//std::cout << "Point1 " << corners[k] << "Point2 " << corners[i] << "Center " << centerpoint;
-					maxCX = centerpoint.x;
-					maxCY = centerpoint.y;
-					maxCZ = centerpoint.z;
+					maxCX = centerpoint.x();
+					maxCY = centerpoint.y();
+					maxCZ = centerpoint.z();
 				}
 			}
 		}

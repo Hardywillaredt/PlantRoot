@@ -26,6 +26,7 @@ namespace Roots
 		float euclidLength;
 		int v0id, v1id;
 		float thickness, width, length;
+		int glV0, glV1;
 		//boost::python::list data;
 
 
@@ -37,7 +38,6 @@ namespace Roots
 		RootAttributes(float *attributeData, Point3d v0 = Point3d(), Point3d v1 = Point3d());
 		RootAttributes(std::vector<float> attributeData, Point3d v0 = Point3d(), Point3d v1 = Point3d());
 		RootAttributes(float aThickness, float aWidth, Point3d v0 = Point3d(), Point3d v1 = Point3d());
-		
 
 		bool operator==(RootAttributes& second);
 

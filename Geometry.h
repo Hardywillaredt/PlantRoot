@@ -12,7 +12,7 @@ public:
 	//Point3d(Json::Value json);
 	//Json::Value ToJson();
 	// << serializable implementation//
-	float x, y, z;
+	float p[3];
 	int id;
 
 	Point3d(float *aData, int index = 0);
@@ -41,7 +41,22 @@ public:
 	{
 		return id < other.id;
 	}
-
+	float& operator[](size_t i)
+	{
+		return p[i];
+	}
+	float x()
+	{
+		return p[0];
+	}
+	float y()
+	{
+		return p[1];
+	}
+	float z()
+	{
+		return p[2];
+	}
 	float mag();
 private:
 

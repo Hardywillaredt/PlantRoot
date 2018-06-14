@@ -10,35 +10,35 @@ bool Log::isLogOpen = false;
 
 Point3d::Point3d(float *aData, int index)
 {
-	x = aData[0];
-	y = aData[1];
-	z = aData[2];
+	p[0] = aData[0];
+	p[1] = aData[1];
+	p[2] = aData[2];
 	id = index;
 }
 
 
 Point3d::Point3d(float ax, float ay, float az, int index)
 {
-	x = ax;
-	y = ay;
-	z = az;
+	p[0] = ax;
+	p[1] = ay;
+	p[2] = az;
 	id = index;
 }
 
 Point3d::Point3d()
 {
-	x = 0;
-	y = 0;
-	z = 0;
+	p[0] = 0;
+	p[1] = 0;
+	p[2] = 0;
 	id = 0;
 }
 
 Point3d::Point3d(const Point3d &other)
 {
-
-	x = other.x;
-	y = other.y;
-	z = other.z;
+	for (int i = 0; i < 3; ++i)
+	{
+		p[i] = other.p[i];
+	}
 	id = other.id;
 }
 
@@ -58,13 +58,13 @@ Point3d::Point3d(const Point3d &other)
 
 Point3d operator-(Point3d &first, Point3d &second)
 {
-	return Point3d(first.x - second.x, first.y - second.y, first.z - second.z);
+	return Point3d(first[0] - second[0], first[1] - second[1], first[2] - second[2]);
 }
 
 Point3d operator+(Point3d &first, Point3d &second)
 {
 
-	return Point3d(first.x + second.x, first.y + second.y, first.z + second.z);
+	return Point3d(first[0] + second[0], first[1] + second[1], first[2] + second[2]);
 }
 
 Point3d operator+=(Point3d &first, Point3d &second)
@@ -75,32 +75,34 @@ Point3d operator+=(Point3d &first, Point3d &second)
 
 std::ostream& operator<<(std::ostream& out, const Point3d& point)
 {
-	out << point.x << " " << point.y << " " << point.z;
+	out << point.p[0] << " " << point.p[1] << " " << point.p[2];
 	return out;
 }
 
 std::istream& operator>>(std::istream& in, Point3d& point)
 {
-	in >> point.x;
-	in >> point.y;
-	in >> point.z;
+	in >> point[0];
+	in >> point[1];
+	in >> point[2];
 	return in;
 }
 
 Point3d operator/(Point3d & p, float div)
 {
-	return Point3d(p.x / div, p.y / div, p.z / div);
+	return Point3d(p[0] / div, p[1] / div, p[2] / div);
 }
 
 Point3d operator*(Point3d & p, float mul)
 {
-	return Point3d(p.x*mul, p.y*mul, p.z*mul);
+	return Point3d(p[0]*mul, p[1]*mul, p[2]*mul);
 }
+
+
 
 float Point3d::mag()
 {
 	float result = 0.0;
-	result += x*x + y*y + z*z;
+	result += p[0]*p[0] + p[1]*p[1] + p[2]*p[2];
 	return std::sqrt(result);
 }
 

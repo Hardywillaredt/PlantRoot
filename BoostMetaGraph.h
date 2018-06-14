@@ -2,7 +2,7 @@
 
 #include "BoostSkeleton.h"
 #include "boost/python.hpp"
-
+#include "arcball.h"
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,9 +10,9 @@
 
 #include "Sphere.h"
 
+
 typedef GLuint GLLineIndex;
 typedef GLuint GLVertexIndex;
-
 
 enum ColorizationOptions
 {
@@ -20,10 +20,11 @@ enum ColorizationOptions
 	ByWidth = 1,
 	ByRatio = 2,
 	ByDegree = 3,
-	ByComponent = 4
+	ByComponent = 4,
+	Other = 5
 };
 
-enum OperationModes
+enum OperationMode
 {
 	None = 0,
 	Connection = 1,
@@ -32,41 +33,111 @@ enum OperationModes
 	Split = 4
 };
 
-struct NodeVisualizationOptions
-{
-	bool show;
-	bool highlightEndpoints;
-	bool highlightJunctions;
-	ColorizationOptions colorization;
-	boost::python::list heatmap;
-	float baseScale;
-	float highlightScale;
-};
 
-struct EdgeVisualizationOptions
-{
-	bool show;
-	ColorizationOptions colorization;
-	boost::python::list heatmap;
-	float baseScale;
-	float highlightScale;
-};
+#define nodeSelectionScaling 2.5
+#define nonBridgeScaling 3.0
+#define edgeSelectionScaling 5.0
+#define useArcball false
+
 
 namespace Roots
 {
+	struct ColorTable
+	{
+		static std::vector<std::vector<float>> colors;
+		ColorTable()
+		{
+			return;
+		}
+		static std::vector<float> getComponentColor(int component)
+		{
+			if (component > ColorTable::colors.size())
+			{
+				colors.push_back({});
+				for (int c = 0; c < 3; ++c)
+				{
+					float randomC = ((float)rand() / RAND_MAX);
+					colors.back().push_back(randomC);
+				}
+				colors.back().push_back(1.0);
+			}
+			return colors[component];
+		}
+	};
+
+	struct EdgeVisualizationOptions
+	{
+		bool show;
+		float scale;
+		bool magnifyNonBridges;
+		bool showOnlyNonBridges;
+
+		//scale of 0-1 between min and max for whatever attribute is being colorized
+		//lower/higher values are flooded
+		float minColorCutoff, maxColorCutoff;
+		ColorizationOptions colorization;
+		std::vector<std::vector<GLfloat>> heatmap;
+		float flatSelectionColor[4];
+
+		EdgeVisualizationOptions();
+	};
+
+	struct NodeVisualizationOptions
+	{
+		bool showEndpoints;
+		float endpointScale;
+		bool showJunctions;
+		float junctionScale;
+
+		bool useConstantNodecolor;
+		float constantNodeColor[4];
+
+		float minColorCutoff, maxColorCutoff;
+		ColorizationOptions colorization;
+		std::vector<std::vector<GLfloat>> heatmap;
+
+
+
+		NodeVisualizationOptions();
+	};
+
 	struct BMetaNode
 	{
 		SkelVert mSrcVert;
 		BSkeleton* mSrcSkeleton;
 		bool hasGeom;
-		float x, y, z;
+		float p[3];
+		int degree;
 		int connectedComponent;
 		float nodeThickness;
 		float nodeWidth;
+		float glThicknessColor[4];
+		float glWidthColor[4];
+		float glDegreeColor[4];
+		float glComponentColor[4];
+		float *currentColor;
+		
 
 		BMetaNode();
 		BMetaNode(SkelVert srcId, BSkeleton *skel);
-
+		void updateColors(NodeVisualizationOptions options);
+		void updateComponentColor();
+		float &operator[](size_t i)
+		{
+			return p[i];
+		}
+		float x()
+		{
+			return p[0];
+		}
+		float y()
+		{
+			return p[1];
+		}
+		float z()
+		{
+			return p[2];
+		}
 	};
 
 	struct BMetaEdge
@@ -74,50 +145,73 @@ namespace Roots
 		std::vector<SkelVert> mVertices;
 		std::vector<RootAttributes> mEdges;
 		//BSkeleton *mSrcSkeleton;
-		float averageThickness, averageWidth;
+		float averageThickness, averageWidth, mLength;
 		bool isBridge;
+		bool isSelected;
 
-		int node0, node1;
-		int id;
-		int component;
+		int connectedComponent;
+		
 
-		GLVertexIndex glEdgeVerticesStart, glEdgeVerticesEnd;
-		GLLineIndex glEdgeLinesStart, glEdgeLinesEnd;
-		bool isPartOfLinesList;
+		//whenever we remove a meta edge, we will just completely rebuild the indices lists
+		//this is the list of this edges indices for each line referencing the vertex indices in 
+		//a glvertices list
+		std::vector<GLuint> indicesList;
+		//GLfloat *glVertices;
 
+		std::vector<GLfloat> localThicknessColors, localWidthColors, localRatioColors, localComponentColors;
 
 
 		BMetaEdge();
-		BMetaEdge(std::vector<SkelVert> vertices, BSkeleton* srcSkeleton, std::vector<GLfloat> &edgeVertices, std::vector<GLVertexIndex> &edgeIndices);
+		BMetaEdge(std::vector<SkelVert> vertices, BSkeleton* srcSkeleton, std::vector<GLfloat> &glVertices);
 		BMetaEdge join(BMetaEdge &other, BSkeleton* srcSkeleton);
+		std::pair<BMetaEdge, BMetaEdge> split(SkelVert toSplitOn, BSkeleton *srcSkeleton);
 		float getAvgThickness();
 		SkelVert start();
 		SkelVert end();
+		void addToIndicesList(std::vector<GLuint> &edgeIndices);
+
+		void updateColors(EdgeVisualizationOptions options, std::vector<std::vector<GLfloat>> &edgeColors);
+		void updateComponentColor(std::vector<std::vector<GLfloat>> &edgeColors);
+		void select(GLfloat *selectionColor, std::vector<std::vector<GLfloat>> &edgeColors);
+		void unselect(std::vector<std::vector<GLfloat>> &edgeColors);
+		void updateGraphColors(std::vector<std::vector<GLfloat>> &edgeColors);
 	};
 
-	struct MetaNode3d : public Point3d
+	struct BoundingBox
 	{
-		int connectedComponent;
-		int order;
-		float nodeThickness;
-		float nodeWidth;
-		int degree;
-		MetaNode3d();
-		MetaNode3d(BMetaNode srcNode, BSkeleton *srcSkel, int aOrder, int aDegree);
+		std::vector<std::vector<float>> corners;
+		bool hasPoints;
+		float minx, maxx, miny, maxy, minz, maxz;
+
+		BoundingBox();
+
+		void addPoint(float *p);
+		void draw(std::vector<GLfloat> componentColor, float lineWidth);
 	};
 
-	struct MetaEdge3d
-	{
-		int node0, node1;
-		float avgThickness, avgWidth;
-		int connectedComponent;
-		int order;
-		boost::python::list edges;
-		bool isBridge;
+	//struct MetaNode3d : public Point3d
+	//{
+	//	int connectedComponent;
+	//	int order;
+	//	float nodeThickness;
+	//	float nodeWidth;
+	//	int degree;
+	//	MetaNode3d();
+	//	MetaNode3d(BMetaNode srcNode, BSkeleton *srcSkel, int aOrder, int aDegree);
+	//};
 
-		MetaEdge3d();
-		MetaEdge3d(int n0, int n1, float thickness, float width, int connectedComponent, int aOrder, std::vector<RootAttributes> aEdges, bool aIsBridge);
-	};
+	//struct MetaEdge3d
+	//{
+	//	int node0, node1;
+	//	float avgThickness, avgWidth;
+	//	int connectedComponent;
+	//	int order;
+	//	boost::python::list edges;
+	//	bool isBridge;
+
+	//	MetaEdge3d();
+	//	MetaEdge3d(int n0, int n1, float thickness, float width, int connectedComponent, int aOrder, std::vector<RootAttributes> aEdges, bool aIsBridge);
+	//};
 }
 
 namespace
@@ -128,6 +222,14 @@ namespace
 }
 
 namespace Roots{
+	struct MinMaxStruct
+	{
+		static float minThickness, maxThickness, minWidth, maxWidth, minRatio, maxRatio, minComponent, maxComponent, minDegree, maxDegree;
+	};
+	
+
+
+
 	struct BMetaGraph : public BoostMetaGraph
 	{
 		/*vvvvvvvvvvvvvvvvvvvvv MEMBER VARIABLES vvvvvvvvvvvvvvvvvvvvv*/
@@ -139,38 +241,147 @@ namespace Roots{
 
 		//vector correlating each edge to a connected component
 		std::vector<int> mComponentMap;
+		std::vector<float> mComponentSizeMap;
 		std::vector<MetaE> mMinimumSpanningTree;
+		std::vector<BoundingBox> componentBounds;
+		int numComponents;
 
 		//map backwards from the duplicated element to the src element
 		//these maps are only to be used for writing out the files
 		std::map<MetaE, MetaE> mDuplicateEdgeMap;
 		std::map<MetaV, MetaV> mDuplicateNodeMap;
+		bool isLoaded;
 
 
 		//visualization and drawing options
 		EdgeVisualizationOptions edgeOptions;
 		NodeVisualizationOptions nodeOptions;
-		drawing::VBOSphere drawSphere;
+		OperationMode mode;
+		static drawing::VBOSphere drawSphere;
+		static drawing::VBOCube drawCube;
 
 		//vbo objects
 		std::vector<GLfloat> edgeVertices;
-		int numEdges;
-		std::vector<GLfloat> edgeColors;
-		std::vector<GLuint> highlightEdges;
-		std::vector<GLuint> baseEdges;
+		std::vector<std::vector<GLfloat>> edgeColors;
+		//std::vector<GLuint> nonBridgeEdgeIndices;
+		//std::vector<GLuint> bridgeEdgeIndices;
+		//std::vector<GLuint> baseEdgeIndices;
+		//std::vector<std::vector<GLuint>> componentIndices;
+		GLfloat selectionColor[4];
 		
+		bool onlyDisplaySelectedComponents;
+		int selectedComponent1, selectedComponent2;
+		bool showBoundingBoxes;
+
+		MetaV selectNode1, selectNode2;
+		bool selectNode1Valid, selectNode2Valid;
+
+		std::pair<MetaV, MetaV> breakEdge;
+		bool breakEdgeValid;
+
+		std::pair<MetaV, MetaV> splitEdge;
+		bool splitEdgeValid;
+		std::vector<std::pair<MetaV, MetaV>> splitNeighbors;
+
+		
+
+		//this should not be used anymore
+		bool pythonUpToDate;
+
+
+
+		int getNumGLEdges();
+		int getNumGLVertices();
+
+		
+		//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvSettingsvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//
+
+		
+		void assignEdgeHeatMap(boost::python::list heatmap);
+		void showEdges(bool doShow);
+		void setEdgeScale(float scale);
+		void magnifyNonBridges(bool doMagnify);
+		void showOnlyNonBridges(bool showOnly);
+		void colorizeEdgesByThickness();
+		void colorizeEdgesByWidth();
+		void colorizeEdgesByRatio();
+		void colorizeEdgesByComponent();
+		void setEdgeColorFloor(float val);
+		void setEdgeColorCeiling(float val);
+		void setEdgeSelectionColor(float r, float g, float b);
+
+		void assignNodeHeatMap(boost::python::list heatmap);
+		void showEndpoints(bool doShow);
+		void showJunctions(bool doShow);
+		void setEndpointScale(float scale);
+		void setJunctionScale(float scale);
+		void setConstantNodeColor(float r, float g, float b);
+		void colorizeNodesByThickness();
+		void colorizeNodesByWidth();
+		void colorizeNodesByDegree();
+		void colorizeNodesByComponent();
+		void colorizeNodesByConstantColor();
+		void setNodeColorFloor(float val);
+		void setNodeColorCeiling(float val);
+
+		void setDisplayOnlySelectedComponents(bool showOnlySelected);
+		void setComponent1(int component);
+		void setComponent2(int component);
+		void setShowBoundingBoxes(bool doShow);
 
 		void drawEdges();
 		void drawNodes();
+		void drawBoxes();
+		void draw();
 
-		bool pythonUpToDate;
+		void startRotation(int mx, int my);
+		void mouseMoved(int mx, int my);
+		void setZoom(float rad, float eyex, float eyey, float eyez, float upx, float upy, float upz);
+
+		//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Settings^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^//
+
+		//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvInteractionsvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//
+
+		void selectConnectionNode(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ);
+
+		//void selectMetaNode(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ);
+		//void selectPromotionNode(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ);
+		void selectBreakEdge(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ);
+		void selectSplitEdge(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ);
+		void setSelectionColor(float r, float g, float b);
+		void unselectAll();
+
+	private:
+		MetaV getFirstMetaNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid);
+		SkelVert getFirstSkelNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid);
+		std::pair<MetaV, MetaV> getFirstMetaEdgeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid);
+		void privateSelectConnectionNode(SkelVert nodeVert, int selectComponent);
+		void unselectAllEdges();
+
+		void unselectEdge(std::pair<MetaV, MetaV> toUnselect);
+		void selectEdge(std::pair<MetaV, MetaV> toSelect);
+		//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Interactions^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^//
+
+	public:
+
+
+
+
+
+		boost::python::list getComponentSizes();
+
+		int getNumComponents()
+		{
+			return numComponents;
+		}
 
 		/*vvvvvvvvvvvvvvvvvvvvv CONSTRUCTORS vvvvvvvvvvvvvvvvvvvvv*/
 
 		/*default constructor.  Only constructor defined.  All operations such as loading or
 		adding edges should be done with appropriate member functions*/
 		BMetaGraph();
-		BMetaGraph(std::string filename);
+		void Initialize();
+		//BMetaGraph(std::string filename);
 
 		/*vvvvvvvvvvvvvvvvvvvvv LOADERS AND SAVERS vvvvvvvvvvvvvvvvvvvvv*/
 
@@ -224,18 +435,18 @@ namespace Roots{
 		MetaEdge between the start vert and it.  Both the start vert and the end vert need to be in
 		the metaedge
 		*/
-		MetaE buildMetaEdge(MetaV start, SkelVert &lead, std::vector<bool> &skelVertsVisited);
+		MetaE buildMetaEdge(MetaV start, SkelVert &lead, std::vector<bool> &skelVertsVisited, bool isLoading);
 
 	public:
 
 		/*
 		Only call that should be made to add vertices
 		*/
-		MetaV addNode(SkelVert srcVert, BSkeleton *srcSkel);
+		MetaV addNode(SkelVert srcVert, BSkeleton *srcSkel, bool inheretEdgeParams=false);
 		/*
 		Only call that should be made to add edges
 		*/
-		MetaE addEdge(MetaV v0, MetaV v1, std::vector<SkelVert> skelVerts, BSkeleton *srcSkel);
+		MetaE addEdge(MetaV v0, MetaV v1, std::vector<SkelVert> skelVerts, BSkeleton *srcSkel, bool isLoading, bool isJoining=false);
 
 		/*
 		Only call that should be made to duplicate edges
@@ -246,8 +457,12 @@ namespace Roots{
 
 		void removeEdge(MetaE edgeToRemove);
 
+		void removeEdgeNoBridging(MetaE edgeToRemove);
+
 	private:
 		void updateVertNodeMap();
+
+		void updateNodeDegrees();
 
 	public:
 		/*
@@ -279,7 +494,7 @@ namespace Roots{
 		void bridgeUtil(int u, bool visited[], int disc[],
 			int low[], int parent[], std::vector<std::pair<MetaV, MetaV>> &bridgeNodes);
 
-		void bridge();
+		void findBridges();
 		/*
 		This method should support the first operation for this tool - making new connections 
 		between isolated components.  Provided two meta nodes, create a new connection between them.
@@ -288,15 +503,16 @@ namespace Roots{
 		should be merged, and then these nodes should be deleted, and a new edge created between
 		the remaining nodes
 		*/
-		void JoinOperation(Point3d p1picked, Point3d p2picked);
+		void JoinOperation();
+		//void JoinOperation(Point3d p1picked, Point3d p2picked);
 
 		/*
 		This method will also support the first operation.  It will help to pick out the nodes and 
 		edges between them belonging to a single connected component, returned as an adjacency list
 		between points of the same id.
 		*/
-
-		void BreakOperation(MetaEdge3d toBreak);
+		void BreakOperation();
+		//void BreakOperation(MetaEdge3d toBreak);
 
 		/*
 		This method will support the splitting operation.  Specifically, one central edge will be selected, toSplit.
@@ -304,7 +520,11 @@ namespace Roots{
 		This set of connected edges edges at the source and target nodes will then be disconnected from the
 		source edge, and reconnected to a duplicate of the central edge.
 		*/
-		void SplitOperation(MetaEdge3d toSplit, std::vector<MetaEdge3d> connectedEdgeSet);
+		void SplitOperation();
+		//void SplitOperation(MetaEdge3d toSplit, std::vector<MetaEdge3d> connectedEdgeSet);
+
+
+		void PromoteOperation(SkelVert toPromote);
 	
 	private:
 		/*
@@ -312,7 +532,9 @@ namespace Roots{
 		into this node, creates a new edge in the graph bridging its two adjacent nodes, and 
 		removing this node and its incident edges from the graph.
 		*/
-		void BridgeNode(MetaV nodeToBridge);
+		bool BridgeNode(SkelVert vertToBridge);
+
+		//void BridgeNodeSweeper();
 	public:
 		/*
 		Use the vert node map to determine the connected component to which an edge belongs
@@ -320,38 +542,97 @@ namespace Roots{
 		int GetEdgeComponent(MetaE edge);
 	};
 
-
-
 }
 
-struct PyMetaGraph
+typedef boost::graph_traits<Roots::BMetaGraph>::vertex_iterator vertIter;
+typedef boost::graph_traits<Roots::BMetaGraph>::edge_iterator edgeIter;
+using namespace boost;
+struct metaVertIter : std::pair<vertIter, vertIter>
 {
-	PySkeleton mSkeleton;
-	//list of MetaNode3d values in the same order as the vertices of this metagraph
-	boost::python::list mMetaNodeLocations;
-	//list of MetaEdge3d values providing the connections between the metanodes in the previous list 
-	boost::python::list mMetaEdgeConnections;
-	//connected component maps for vertices and edges, each maps between the connected components
-	//and a list of the edges/vertices which map to it
-	boost::python::dict componentNodeMap;
-	boost::python::dict componentEdgeMap;
-	boost::python::dict componentNodesOfInterestMap;
-	int numEdgesToBreak;
-	
-	PyMetaGraph(std::string filename);
-
-	boost::python::list getComponentNodes(int component);
-	boost::python::list getComponentEdges(int component);
-	
-
-	void initializeFromSkeleton();
-	void reload();
-	void labelComponents();
-	void joinOperation(int v0, int v1);
-	void breakOperation(Roots::MetaEdge3d edge);
-	void splitOperation(Roots::MetaEdge3d toSplit, boost::python::list connectedEdgeSet);
-
-
-private:
-	Roots::BMetaGraph mGraph;
+	metaVertIter(const std::pair<vertIter, vertIter> &other)
+		:std::pair<vertIter, vertIter>(other)
+	{
+	}
+	metaVertIter operator++()
+	{
+		++this->first;
+		return *this;
+	}
+	metaVertIter operator--()
+	{
+		--this->second;
+		return *this;
+	}
 };
+
+struct metaEdgeIter : std::pair<edgeIter, edgeIter>
+{
+	metaEdgeIter(const std::pair<edgeIter, edgeIter> &other)
+		:std::pair<edgeIter, edgeIter>(other)
+	{
+	}
+	metaEdgeIter operator++()
+	{
+		++this->first;
+		return *this;
+	}
+
+	metaEdgeIter operator--()
+	{
+		--this->second;
+		return *this;
+	}
+};
+
+template <class T>
+boost::python::list toPythonList(std::vector<T> vector) {
+	typename std::vector<T>::iterator iter;
+	boost::python::list list;
+	for (iter = vector.begin(); iter != vector.end(); ++iter) {
+		list.append(*iter);
+	}
+	return list;
+}
+
+template <class T>
+std::vector<T> toStdVector(boost::python::list list)
+{
+	std::vector<T> result = {};
+	for (int i = 0; i < boost::python::len(list); ++i)
+	{
+		result.push_back(boost::python::extract<T>(list[i]));
+	}
+	return result;
+}
+
+
+//struct PyMetaGraph
+//{
+//	PySkeleton mSkeleton;
+//	//list of MetaNode3d values in the same order as the vertices of this metagraph
+//	boost::python::list mMetaNodeLocations;
+//	//list of MetaEdge3d values providing the connections between the metanodes in the previous list 
+//	boost::python::list mMetaEdgeConnections;
+//	//connected component maps for vertices and edges, each maps between the connected components
+//	//and a list of the edges/vertices which map to it
+//	boost::python::dict componentNodeMap;
+//	boost::python::dict componentEdgeMap;
+//	boost::python::dict componentNodesOfInterestMap;
+//	int numEdgesToBreak;
+//	
+//	PyMetaGraph(std::string filename);
+//
+//	boost::python::list getComponentNodes(int component);
+//	boost::python::list getComponentEdges(int component);
+//	
+//
+//	void initializeFromSkeleton();
+//	void reload();
+//	void labelComponents();
+//	void joinOperation(int v0, int v1);
+//	void breakOperation(Roots::MetaEdge3d edge);
+//	void splitOperation(Roots::MetaEdge3d toSplit, boost::python::list connectedEdgeSet);
+//	Roots::BMetaGraph mGraph;
+//
+//	
+//};

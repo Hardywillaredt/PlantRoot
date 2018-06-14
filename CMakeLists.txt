@@ -45,13 +45,13 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
     set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUT_DIR} )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-add_subdirectory(SupportLibs)
+#add_subdirectory(SupportLibs)
 
 
-set(JSON_CPP_LIB ${CMAKE_CURRENT_BINARY_DIR}/SupportLibs/src/lib_json/Debug/jsoncpp.lib CACHE STRING "JSON CPP lib" FORCE)
-set(JSON_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/SupportLibs/jsoncpp/include;${CMAKE_CURRENT_SOURCE_DIR}/SupportLibs/jsoncpp/src CACHE STRING "JSON cpp src dirs" FORCE)
-message(${JSON_CPP_LIB})
-link_libraries(${JSON_CPP_LIB})
+#set(JSON_CPP_LIB ${CMAKE_CURRENT_BINARY_DIR}/SupportLibs/src/lib_json/Debug/jsoncpp.lib CACHE STRING "JSON CPP lib" FORCE)
+#set(JSON_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/SupportLibs/jsoncpp/include;${CMAKE_CURRENT_SOURCE_DIR}/SupportLibs/jsoncpp/src CACHE STRING "JSON cpp src dirs" FORCE)
+#message(${JSON_CPP_LIB})
+#link_libraries(${JSON_CPP_LIB})
 
 
 file(GLOB BOOST_LIBS "${BOOST_LIBRARY_DIRS}/*.lib")
@@ -61,26 +61,26 @@ set(PYTHON_DIR "C:/Users/Will/AppData/Local/Programs/Python/Python35" CACHE PATH
 
 
 add_library(RootsTool SHARED ${Roots_src})
-target_include_directories(RootsTool PUBLIC ${JSON_INCLUDES})
+#target_include_directories(RootsTool PUBLIC ${JSON_INCLUDES})
 target_include_directories(RootsTool PUBLIC ${BOOST_INCLUDE_DIRS})
 target_include_directories(RootsTool PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
 target_include_directories(RootsTool PUBLIC ${PYTHON_DIR})
 target_include_directories(RootsTool PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
 target_include_directories(RootsTool PUBLIC ${GLFW_INCLUDEDIR})
 target_include_directories(RootsTool PUBLIC ${GLAD_INCLUDEDIR})
-target_link_libraries(RootsTool ${PYTHON_DIR}/libs/python35.lib ${GLFW_LIB} opengl32.lib)
+target_link_libraries(RootsTool ${PYTHON_DIR}/libs/python35.lib ${GLFW_LIB} opengl32.lib glu32.lib)
 
 
 
 add_executable(RootsEXE ${Roots_src})
-target_include_directories(RootsEXE PUBLIC ${JSON_INCLUDES})
+#target_include_directories(RootsEXE PUBLIC ${JSON_INCLUDES})
 target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS})
 target_include_directories(RootsEXE PUBLIC ${BOOST_INCLUDE_DIRS}/boost)
 target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR})
 target_include_directories(RootsEXE PUBLIC ${PYTHON_DIR}/include ${PYTHON_DIR}/libs ${PYTHON_DIR}/DLLs)
 target_include_directories(RootsEXE PUBLIC ${GLFW_INCLUDEDIR})
 target_include_directories(RootsEXE PUBLIC ${GLAD_INCLUDEDIR})
-target_link_libraries(RootsEXE ${PYTHON_DIR}/libs/python35.lib ${GLFW_LIB} opengl32.lib)
+target_link_libraries(RootsEXE ${PYTHON_DIR}/libs/python35.lib ${GLFW_LIB} opengl32.lib glu32.lib)
 
 
 set_target_properties(RootsEXE PROPERTIES RUNTIME_OUTPUT_DIRECTORY "D:/dev/school/rootsProject/build/x64/Debug")

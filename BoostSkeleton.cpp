@@ -1,47 +1,6 @@
 #include "BoostSkeleton.h"
 
-namespace
-{
-	typedef boost::graph_traits<BoostSkeleton>::vertex_iterator vertIter;
-	typedef boost::graph_traits<BoostSkeleton>::edge_iterator edgeIter;
 
-	struct skelVertIter : std::pair<vertIter, vertIter>
-	{
-		skelVertIter(const std::pair<vertIter, vertIter> &other)
-			:std::pair<vertIter, vertIter>(other)
-		{
-		}
-		skelVertIter operator++()
-		{
-			++this->first;
-			return *this;
-		}
-		skelVertIter operator--()
-		{
-			--this->second;
-			return *this;
-		}
-	};
-
-	struct skelEdgeIter : std::pair<edgeIter, edgeIter>
-	{
-		skelEdgeIter(const std::pair<edgeIter, edgeIter> &other)
-			:std::pair<edgeIter, edgeIter>(other)
-		{
-		}
-		skelEdgeIter operator++()
-		{
-			++this->first;
-			return *this;
-		}
-
-		skelEdgeIter operator--()
-		{
-			--this->second;
-			return *this;
-		}
-	};
-}
 
 namespace Roots
 {
@@ -50,17 +9,26 @@ namespace Roots
 	std::string BSkeleton::vertexString = "vertex";
 	std::string BSkeleton::edgeString = "edge";
 	std::string BSkeleton::endHeaderString = "end_header";
+	std::string BSkeleton::beginPlyString = "ply";
+
 
 	BSkeleton::BSkeleton()
+	{
+		Initialize();
+	}
+
+	void BSkeleton::Initialize()
 	{
 		mMinX = 0, mMaxX = 0, mMinY = 0, mMaxY = 0, mMinZ = 0, mMaxZ = 0;
 		mBoundsFound = false;
 		mCenter = Point3d();
 		mRadius = 0;
+		clear();
 	}
 
-	int BSkeleton::loadFromLines(std::vector<std::string> lines, int startingLine)
+	int BSkeleton::loadFromLines(std::vector<std::string> lines, int startingLine, std::vector<GLfloat> &glVertices)
 	{
+		Initialize();
 		mBoundsFound = false;
 		bool endHeaderReached = false;
 		std::string line;
@@ -71,12 +39,16 @@ namespace Roots
 		if (!boost::iequals(line, beginSkeletonString))
 		{
 			//std::cout << "The Skeleton file lacks the " << beginSkeletonString << "header.  Should attempt to load wenzhen style file" << std::endl;
-			result = loadWenzhenLines(lines, startingLine);
+			result = loadWenzhenLines(lines, glVertices, startingLine);
+		}
+		else if (!boost::iequals(line, beginPlyString))
+		{
+			result = loadDanPly(lines, glVertices, startingLine);
 		}
 		else
 		{
 			//std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
-			result = loadPlyStyleLines(lines, startingLine);
+			result = loadPlyStyleLines(lines, glVertices, startingLine);
 		}
 
 		/*for (skelEdgeIter sei = boost::edges(*this); sei.first != sei.second; ++sei)
@@ -111,7 +83,7 @@ namespace Roots
 		}
 	}
 
-	int BSkeleton::loadWenzhenLines(std::vector<std::string> lines, int startingLine)
+	int BSkeleton::loadWenzhenLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine)
 	{
 		int lineOn = startingLine;
 		
@@ -139,7 +111,7 @@ namespace Roots
 		}
 		
 		loadVertices(lines, lineOn, numVertices);
-		loadEdges(lines, lineOn, numEdges);
+		loadEdges(lines, lineOn, numEdges, glVertices);
 		if (lineOn >= lines.size())
 		{
 			std::cout << "Line on greater than lines size" << std::endl;
@@ -147,7 +119,16 @@ namespace Roots
 		return lineOn;
 	}
 
-	int BSkeleton::loadPlyStyleLines(std::vector<std::string> lines, int startingLine)
+	int BSkeleton::loadDanPly(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine)
+	{
+		int lineOn = startingLine;
+
+		int numEdges = 0, numVertices = 0, numFaces = 0;
+
+
+	}
+
+	int BSkeleton::loadPlyStyleLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine)
 	{
 		std::vector<std::vector<std::string>> headerInfo;
 		bool endHeaderReached = false;
@@ -185,7 +166,7 @@ namespace Roots
 			{
 				//handle edges
 				int numEdges = boost::lexical_cast<int>(headerWords[1]);
-				loadEdges(lines, lineOn, numEdges);
+				loadEdges(lines, lineOn, numEdges, glVertices);
 			}
 			else
 			{
@@ -221,7 +202,7 @@ namespace Roots
 		//std::cout << lines[lineOn] << std::endl;
 	}
 
-	void BSkeleton::loadEdges(std::vector<std::string> lines, int &lineOn, int numEdges)
+	void BSkeleton::loadEdges(std::vector<std::string> lines, int &lineOn, int numEdges, std::vector<GLfloat> &glVertices)
 	{
 		//std::cout << "Beginning to load edges" << std::endl;
 		//std::cout << "first line is : " << lines[lineOn] << std::endl;
@@ -250,13 +231,13 @@ namespace Roots
 				SkelVert bv1 = boost::vertex(v1, *this);
 				p0 = operator[](bv0);
 				p1 = operator[](bv1);
-				addEdge(v0, v1, RootAttributes(attributedata, p0, p1));
+				addEdge(v0, v1, RootAttributes(attributedata, p0, p1), glVertices);
 			}
 
 		}
 	}
 
-	SkelEdge BSkeleton::addEdge(int v0, int v1, RootAttributes attributes)
+	SkelEdge BSkeleton::addEdge(int v0, int v1, RootAttributes attributes, std::vector<GLfloat> &glVertices)
 	{
 		SkelEdge e;
 		bool edgeAdded;
@@ -266,6 +247,17 @@ namespace Roots
 			operator[](e) = attributes;
 			operator[](e).v0id = v0;
 			operator[](e).v1id = v1;
+			operator[](e).glV0 = glVertices.size() / 3;
+			for (int i = 0; i < 3; ++i)
+			{
+				glVertices.push_back(operator[](v0)[i]);
+			}
+			operator[](e).glV1 = glVertices.size() / 3;
+			for (int i = 0; i < 3; ++i)
+			{
+				glVertices.push_back(operator[](v1)[i]);
+			}
+
 			//this causes a compiler error for some reason
 			//boost::put(boost::edge_weight_t(), *this, e, attributes.euclidLength);
 		}
@@ -302,12 +294,12 @@ namespace Roots
 			while (it.first != it.second)
 			{
 				p = getVertData(*(it.first));
-				mMinX = std::min(p.x, mMinX);
-				mMinY = std::min(p.y, mMinY);
-				mMinZ = std::min(p.z, mMinZ);
-				mMaxX = std::max(p.x, mMaxX);
-				mMaxY = std::max(p.y, mMaxY);
-				mMaxZ = std::max(p.z, mMaxZ);
+				mMinX = std::min(p[0], mMinX);
+				mMinY = std::min(p[1], mMinY);
+				mMinZ = std::min(p[2], mMinZ);
+				mMaxX = std::max(p[0], mMaxX);
+				mMaxY = std::max(p[1], mMaxY);
+				mMaxZ = std::max(p[2], mMaxZ);
 				++it;
 			}
 			mBoundsFound = true;
@@ -319,15 +311,24 @@ namespace Roots
 		findBounds();
 		Point3d minPoint = Point3d(mMinX, mMinY, mMinZ);
 		Point3d maxPoint = Point3d(mMaxX, mMaxY, mMaxZ);
-		Point3d sum = minPoint + maxPoint;
-		mCenter = sum / 2;
+
+		Point3d sum = Point3d();
+		skelVertIter vIter = boost::vertices(*this);
+		for(; vIter.first != vIter.second; ++vIter)
+		{
+			sum = sum + operator[](*vIter.first);
+		}
+
+		sum = sum / m_vertices.size();
+		//Point3d sum = minPoint + maxPoint;
+		mCenter = sum;
 
 		mRadius = (maxPoint - mCenter).mag();
 	}
 
-	BSkeleton BSkeleton::recenterSkeleton(Point3d newCenter)
+	BSkeleton BSkeleton::recenterSkeleton(Point3d newCenter, std::vector<float> &vertices)
 	{
-		findBounds();
+		findBoundingSphere();
 		Point3d offset = newCenter - mCenter;
 
 		BSkeleton result = *this;
@@ -337,6 +338,13 @@ namespace Roots
 		{
 			result[*resIter.first] += offset;
 			++resIter;
+		}
+		for (int i = 0; i < vertices.size() / 3; ++i)
+		{
+			for (int v = 0; v < 3; ++v)
+			{
+				vertices[i * 3 + v] += offset[v];
+			}
 		}
 		return result;
 	}

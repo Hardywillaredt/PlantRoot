@@ -13,6 +13,7 @@ namespace Roots
 		int v0, v1;
 		RootAttributes attributes;
 		
+		double normalizedAttribues[4];
 
 		SkeletonEdge();
 
