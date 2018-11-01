@@ -1,5 +1,4 @@
 #include "Skeleton.h"
-#include "HierarchicalRoot.h"
 #include "PythonModule.h"
 #include "BoostMetaGraph.h"
 
@@ -106,8 +105,8 @@ int main(int argc, char **argv)
 					}
 				}
 
-				mgraph.splitEdge = std::pair<MetaV, MetaV>(e.m_source, e.m_target);
-				mgraph.splitNeighbors = { std::pair<MetaV, MetaV>(e0.m_source, e0.m_target), std::pair<MetaV, MetaV>(e1.m_source, e1.m_target) };
+				mgraph.splitEdge = e;
+				mgraph.splitNeighbors = { e0, e1 };
 				mgraph.splitEdgeValid = true;
 				mgraph.SplitOperation();
 			}

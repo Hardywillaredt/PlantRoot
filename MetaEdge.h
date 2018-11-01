@@ -36,21 +36,6 @@ namespace Roots
 
 
 
-		///*
-		//Builds all descendants of this edge at the child node, and if it
-		//is the absolute parent edge, then also builds out a hierarchy from 
-		//the parent node (as this is actually a child node to this edge)
-		//*/
-		//void buildDescendants();
-		//
-		///*
-		//Build all descendants of this edge at the given vertex.  Detects
-		//any loops in the MetaEdge structure by determining if any of the 
-		//neighbors of that vertex are already part of a MetaEdge 
-		//(that isn't this meta edge)
-		//*/
-		//void buildDescendantsAtNode(int vertIndex);
-
 		bool validateVertexPair(int vert1, int vert2, Skeleton *srcSkel, int &alternateVert2);
 		
 

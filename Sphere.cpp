@@ -85,8 +85,6 @@ void drawing::VBOSphere::fancyDraw(float red, float green, float blue, float x, 
 {
 	GLfloat color[4] = { red, green, blue, 1.0 };
 	fancierDraw(color, x, y, z, scale);
-
-
 }
 
 void drawing::VBOSphere::fancierDraw(GLfloat* color, float x, float y, float z, float scale)
@@ -97,6 +95,24 @@ void drawing::VBOSphere::fancierDraw(GLfloat* color, float x, float y, float z, 
 	draw();
 	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);
+}
+
+void drawing::VBOSphere::pickDraw(GLubyte *color, float x, float y, float z, float scale)
+{
+	glColor3ub(color[0], color[1], color[2]);
+	glTranslatef(x, y, z);
+	glScalef(scale, scale, scale);
+	
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
+
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, &indices[0]);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
+	glTranslatef(-x, -y, -z);
+	
 }
 
 drawing::VBOCube::VBOCube(double radius)
@@ -141,12 +157,31 @@ void drawing::VBOCube::fancierDraw(GLfloat* color, float x, float y, float z, fl
 	glScalef(scale, scale, scale);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_NORMAL_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
+	glNormalPointer(GL_FLOAT, 0, &vertices[0]);
 
 	glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_INT, &indices[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_NORMAL_ARRAY);
+
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
+	glTranslatef(-x, -y, -z);
+}
+
+void drawing::VBOCube::pickDraw(GLubyte* color, float x, float y, float z, float scale)
+{
+	glColor3ub(color[0], color[1], color[2]);
+	glTranslatef(x, y, z);
+	glScalef(scale, scale, scale);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
+
+	glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_INT, &indices[0]);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
 
 	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);

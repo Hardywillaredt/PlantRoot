@@ -8,20 +8,23 @@ std::string logFile = "D:/dev/school/rootsProject/python/log.txt";
 std::ofstream Log::out = std::ofstream();
 bool Log::isLogOpen = false;
 
-Point3d::Point3d(float *aData, int index)
-{
-	p[0] = aData[0];
-	p[1] = aData[1];
-	p[2] = aData[2];
-	id = index;
-}
+//Point3d::Point3d(float *aData, int index)
+//{
+//	p[0] = aData[0];
+//	p[1] = aData[1];
+//	p[2] = aData[2];
+//	id = index;
+//}
 
 
-Point3d::Point3d(float ax, float ay, float az, int index)
+Point3d::Point3d(float ax, float ay, float az, float thickness, float width, int index)
 {
 	p[0] = ax;
 	p[1] = ay;
 	p[2] = az;
+	p[3] = thickness;
+	p[4] = width + 0.0000001;
+	p[5] = thickness / width;
 	id = index;
 }
 
@@ -30,41 +33,32 @@ Point3d::Point3d()
 	p[0] = 0;
 	p[1] = 0;
 	p[2] = 0;
+	p[3] = 0;
+	p[4] = 0.0000001;
+	p[5] = 0;
 	id = 0;
 }
 
 Point3d::Point3d(const Point3d &other)
 {
-	for (int i = 0; i < 3; ++i)
+	for (int i = 0; i < 6; ++i)
 	{
 		p[i] = other.p[i];
 	}
 	id = other.id;
 }
 
-//Json::Value Point3d::ToJson()
-//{
-//	Json::Value edge = Json::Value(Json::ValueType::arrayValue);
-//	edge.resize(3);
-//
-//	edge[0] = data[0];
-//	edge[1] = data[1];
-//	edge[2] = data[2];
-//
-//	return edge;
-//}
-
 
 
 Point3d operator-(Point3d &first, Point3d &second)
 {
-	return Point3d(first[0] - second[0], first[1] - second[1], first[2] - second[2]);
+	return Point3d(first[0] - second[0], first[1] - second[1], first[2] - second[2], first[3], first[4], first.id);
 }
 
 Point3d operator+(Point3d &first, Point3d &second)
 {
 
-	return Point3d(first[0] + second[0], first[1] + second[1], first[2] + second[2]);
+	return Point3d(first[0] + second[0], first[1] + second[1], first[2] + second[2], first[3], first[4], first.id);
 }
 
 Point3d operator+=(Point3d &first, Point3d &second)
@@ -89,12 +83,12 @@ std::istream& operator>>(std::istream& in, Point3d& point)
 
 Point3d operator/(Point3d & p, float div)
 {
-	return Point3d(p[0] / div, p[1] / div, p[2] / div);
+	return Point3d(p[0] / div, p[1] / div, p[2] / div, p[3], p[4], p.id);
 }
 
 Point3d operator*(Point3d & p, float mul)
 {
-	return Point3d(p[0]*mul, p[1]*mul, p[2]*mul);
+	return Point3d(p[0]*mul, p[1]*mul, p[2]*mul, p[3], p[4], p.id);
 }
 
 

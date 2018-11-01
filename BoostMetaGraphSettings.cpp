@@ -1,72 +1,5 @@
 #include "BoostMetaGraph.h"
 
-//namespace
-//{
-//	typedef boost::graph_traits<Roots::BMetaGraph>::vertex_iterator vertIter;
-//	typedef boost::graph_traits<Roots::BMetaGraph>::edge_iterator edgeIter;
-//	using namespace boost;
-//	struct metaVertIter : std::pair<vertIter, vertIter>
-//	{
-//		metaVertIter(const std::pair<vertIter, vertIter> &other)
-//			:std::pair<vertIter, vertIter>(other)
-//		{
-//		}
-//		metaVertIter operator++()
-//		{
-//			++this->first;
-//			return *this;
-//		}
-//		metaVertIter operator--()
-//		{
-//			--this->second;
-//			return *this;
-//		}
-//	};
-//
-//	struct metaEdgeIter : std::pair<edgeIter, edgeIter>
-//	{
-//		metaEdgeIter(const std::pair<edgeIter, edgeIter> &other)
-//			:std::pair<edgeIter, edgeIter>(other)
-//		{
-//		}
-//		metaEdgeIter operator++()
-//		{
-//			++this->first;
-//			return *this;
-//		}
-//
-//		metaEdgeIter operator--()
-//		{
-//			--this->second;
-//			return *this;
-//		}
-//	};
-//
-//	template <class T>
-//	boost::python::list toPythonList(std::vector<T> vector) {
-//		typename std::vector<T>::iterator iter;
-//		boost::python::list list;
-//		for (iter = vector.begin(); iter != vector.end(); ++iter) {
-//			list.append(*iter);
-//		}
-//		return list;
-//	}
-//
-//	template <class T>
-//	std::vector<T> toStdVector(boost::python::list list)
-//	{
-//		std::vector<T> result = {};
-//		for (int i = 0; i < boost::python::len(list); ++i)
-//		{
-//			result.push_back(boost::python::extract<T>(list[i]));
-//		}
-//		return result;
-//	}
-//
-//	GLfloat defaultColor[3] = { 1.0, 0.0, 0.0 };
-//}
-
-
 namespace Roots
 {
 
@@ -130,7 +63,7 @@ namespace Roots
 		metaEdgeIter mei = boost::edges(*this);
 		for (; mei.first != mei.second; ++mei)
 		{
-			operator[](*mei.first).updateColors(edgeOptions, edgeColors);
+			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
 
 	}
@@ -163,7 +96,7 @@ namespace Roots
 		metaEdgeIter mei = boost::edges(*this);
 		for (; mei.first != mei.second; ++mei)
 		{
-			operator[](*mei.first).updateColors(edgeOptions, edgeColors);
+			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
 	}
 	void BMetaGraph::setEdgeColorCeiling(float val)
@@ -177,7 +110,7 @@ namespace Roots
 		metaEdgeIter mei = boost::edges(*this);
 		for (; mei.first != mei.second; ++mei)
 		{
-			operator[](*mei.first).updateColors(edgeOptions, edgeColors);
+			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
 	}
 
@@ -187,6 +120,24 @@ namespace Roots
 		edgeOptions.flatSelectionColor[1] = g;
 		edgeOptions.flatSelectionColor[2] = b;
 		return;
+	}
+
+	void BMetaGraph::showMesh(bool doShow)
+	{
+		std::cout << "display mesh set to " << doShow << std::endl;
+		displayMesh = doShow;
+	}
+
+	void BMetaGraph::setMeshAlpha(float alpha)
+	{
+		std::cout << "Mesh alpha set to " << alpha << std::endl;
+		alphaMesh.setAlpha(alpha);
+	}
+	
+	void BMetaGraph::setMeshColor(float red, float green, float blue)
+	{
+		std::cout << "Mesh color (rgb) set to " << red << " " << green << " " << blue << std::endl;
+		alphaMesh.setColor(red, green, blue);
 	}
 
 
@@ -243,7 +194,6 @@ namespace Roots
 
 	void BMetaGraph::assignNodeHeatMap(boost::python::list heatmap)
 	{
-		//nodeOptions.heatmap = heatmap;
 		nodeOptions.heatmap = {};
 
 		for (int i = 0; i < boost::python::len(heatmap); ++i)
@@ -354,18 +304,31 @@ namespace Roots
 	void BMetaGraph::setDisplayOnlySelectedComponents(bool displayOnlySelectedComponents)
 	{
 		onlyDisplaySelectedComponents = displayOnlySelectedComponents;
+		buildEdgeVBOs();
 	}
 
 	void BMetaGraph::setComponent1(int component)
 	{
 		selectedComponent1 = component;
 		std::cout << "Component 1 set to " << component << std::endl;
+		if (onlyDisplaySelectedComponents)
+		{
+			buildEdgeVBOs();
+		}
 	}
 
 	void BMetaGraph::setComponent2(int component)
 	{
 		selectedComponent2 = component;
+		if (selectedComponent2 > numComponents)
+		{
+			selectedComponent2 = numComponents - 1;
+		}
 		std::cout << "Component 2 set to " << component << std::endl;
+		if (onlyDisplaySelectedComponents)
+		{
+			buildEdgeVBOs();
+		}
 	}
 
 	void BMetaGraph::setShowBoundingBoxes(bool doShow)
@@ -378,12 +341,6 @@ namespace Roots
 
 	void BMetaGraph::drawEdges()
 	{
-		if (useArcball)
-		{
-			glTranslatef(0, 0, -mSkeleton.mRadius * 2);
-			arcball_rotate();
-		}
-		
 		if (!edgeOptions.show || !isLoaded)
 		{
 			return;
@@ -392,98 +349,131 @@ namespace Roots
 		switch (edgeOptions.colorization)
 		{
 		case ColorizationOptions::ByThickness:
-			colorArray = &edgeColors[0][0];
+			colorArray = &vertexColors[0][0];
 			break;
 		case ColorizationOptions::ByWidth:
-			colorArray = &edgeColors[1][0];
+			colorArray = &vertexColors[1][0];
 			break;
 		case ColorizationOptions::ByRatio:
-			colorArray = &edgeColors[2][0];
+			colorArray = &vertexColors[2][0];
 			break;
 		case ColorizationOptions::ByComponent:
-			colorArray = &edgeColors[3][0];
+			colorArray = &vertexColors[3][0];
 			break;
 		default:
-			colorArray = &edgeColors[0][0];
+			colorArray = &vertexColors[0][0];
 			break;
 		}
 
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
-		glVertexPointer(3, GL_FLOAT, 0, &edgeVertices[0]);
+		glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
 		glColorPointer(3, GL_FLOAT, 0, colorArray);
+
+		if (selectionVBO.size() > 0)
+		{
+			glLineWidth(edgeOptions.scale * edgeSelectionScaling);
+			glDrawElements(GL_LINES, selectionVBO.size(), GL_UNSIGNED_INT, &selectionVBO[0]);
+		}
+
+		if (edgeOptions.magnifyNonBridges)
+		{
+			glLineWidth(edgeOptions.scale * nonBridgeScaling);
+		}
+		else
+		{
+			glLineWidth(edgeOptions.scale);
+		}
+		if (nonBridgeVBO.size() > 0)
+		{
+			glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
+		}
+		
+
+
+		if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0)
+		{
+			glLineWidth(edgeOptions.scale);
+			glDrawElements(GL_LINES, bridgeVBO.size(), GL_UNSIGNED_INT, &bridgeVBO[0]);
+		}
+		
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_COLOR_ARRAY);
+	}
+
+	void BMetaGraph::edgePickRender()
+	{
+		glDisable(GL_LIGHTING);
+		glClearColor(1.0, 1.0, 1.0, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadMatrixf(projectionTransform);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadMatrixf(modelViewTransform);
+
+		if (!edgeOptions.show || !isLoaded)
+		{
+			return;
+		}
+		GLubyte edgeIdColor[3];
+
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
+
 
 		metaEdgeIter mei = boost::edges(*this);
 
-		for (; mei.first != mei.second; ++mei)
+		int id = 0;
+		for (; mei.first != mei.second; ++mei, ++id)
 		{
-			BMetaEdge *edge = &operator[](*mei.first);
-			bool isDrawn = false;
-			if (onlyDisplaySelectedComponents)
+			BMetaEdge *e = &operator[](*mei.first);
+			e->instanceId = id;
+			int updatedId = operator[](*mei.first).instanceId;
+			int desiredId = id;
+			if (updatedId != desiredId)
 			{
-				if (edge->connectedComponent != selectedComponent1 && edge->connectedComponent != selectedComponent2)
-				{
-					continue;
-				}
+				std::cout << "Updated and desired Id's do not match " << std::endl;
+				std::cout << "Desired : " << desiredId << " updated : " << updatedId << std::endl;
 			}
-			if (edgeOptions.showOnlyNonBridges)
+			
+
+			edgeIdColor[0] = (e->instanceId & 0x000000FF) >> 0;
+			edgeIdColor[1] = (e->instanceId & 0x0000FF00) >> 8;
+			edgeIdColor[2] = (e->instanceId & 0x00FF0000) >> 16;
+			glColor3ub(edgeIdColor[0], edgeIdColor[1], edgeIdColor[2]);
+
+			if (edgeOptions.showOnlyNonBridges && e->isBridge)
 			{
-				if (edge->isBridge)
-				{
-					continue;
-				}
+				continue;
 			}
-			if (edge->isSelected)
+
+			if (e->isSelected)
 			{
 				glLineWidth(edgeOptions.scale * edgeSelectionScaling);
-				glDrawElements(GL_LINES, edge->indicesList.size(), GL_UNSIGNED_INT, &edge->indicesList[0]);
-				isDrawn = true;
 			}
-			else if (edgeOptions.magnifyNonBridges)
+			else if (edgeOptions.magnifyNonBridges && !e->isBridge)
 			{
-				if (!edge->isBridge)
-				{
-					glLineWidth(edgeOptions.scale *nonBridgeScaling);
-					glDrawElements(GL_LINES, edge->indicesList.size(), GL_UNSIGNED_INT, &edge->indicesList[0]);
-					isDrawn = true;
-				}
+				glLineWidth(edgeOptions.scale * nonBridgeScaling);
 			}
-			if (!isDrawn)
+			else
 			{
 				glLineWidth(edgeOptions.scale);
-				glDrawElements(GL_LINES, edge->indicesList.size(), GL_UNSIGNED_INT, &edge->indicesList[0]);
 			}
+			
+
+			glDrawElements(GL_LINES, e->indicesList.size(), GL_UNSIGNED_INT, &e->indicesList[0]);
 		}
 
-		//if (edgeOptions.magnifyNonBridges)
-		//{
-		//	glLineWidth(edgeOptions.scale * nonBridgeScaling);
-		//	glDrawElements(GL_LINES, nonBridgeEdgeIndices.size(), GL_UNSIGNED_INT, &nonBridgeEdgeIndices[0]);
-
-		//	glLineWidth(edgeOptions.scale);
-		//	glDrawElements(GL_LINES, bridgeEdgeIndices.size(), GL_UNSIGNED_INT, &bridgeEdgeIndices[0]);
-
-		//	glLineWidth(edgeOptions.scale * selectionScaling);
-		//	glDrawElements(GL_LINES, selectionEdgeIndices.size(), GL_UNSIGNED_INT, &selectionEdgeIndices[0]);
-		//}
-		//else if(onlyDisplaySelectedComponents)
-		//{
-		//	glLineWidth(edgeOptions.scale);
-		//	glDrawElements(GL_LINES, componentIndices[selectedComponent1].size(), GL_UNSIGNED_INT, &componentIndices[selectedComponent1][0]);
-		//	glDrawElements(GL_LINES, componentIndices[selectedComponent2].size(), GL_UNSIGNED_INT, &componentIndices[selectedComponent2][0]);
-		//	
-		//	glLineWidth(edgeOptions.scale*selectionScaling);
-		//	glDrawElements(GL_LINES, selectionEdgeIndices.size(), GL_UNSIGNED_INT, &selectionEdgeIndices[0]);
-
-		//}
-		//else
-		//{
-		//	glLineWidth(edgeOptions.scale);
-		//	glDrawElements(GL_LINES, baseEdgeIndices.size(), GL_UNSIGNED_INT, &baseEdgeIndices[0]);
-		//}
-
 		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableClientState(GL_COLOR_ARRAY);
+
+
+		glPopMatrix();
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+
 	}
 
 	void BMetaGraph::drawNodes()
@@ -496,7 +486,6 @@ namespace Roots
 		{
 			BMetaNode *node = &operator[](*mvi.first);
 			int degree = boost::degree(*mvi.first, *this);
-			//int degree = node->degree;
 
 			if ((degree == 1 && !nodeOptions.showEndpoints) || (degree > 2 && !nodeOptions.showJunctions) || degree == 2)
 			{
@@ -504,7 +493,6 @@ namespace Roots
 			}
 
 			
-
 			bool isSelected = false;
 
 			float scale = 0.0;
@@ -516,10 +504,6 @@ namespace Roots
 					continue;
 				}
 			}
-			//if (degree == 0)
-			//{
-			//	node->updateColors(nodeOptions);
-			//}
 
 			if (nodeOptions.colorization == ColorizationOptions::ByThickness)
 			{
@@ -569,17 +553,136 @@ namespace Roots
 			{
 				drawSphere.fancierDraw(nodeColor, node->x(), node->y(), node->z(), scale);
 			}
-			
+		}
+	}
 
+	void BMetaGraph::nodePickRender()
+	{
+		glDisable(GL_LIGHTING);
+		glClearColor(1.0, 1.0, 1.0, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadMatrixf(projectionTransform);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadMatrixf(modelViewTransform);
+
+		metaVertIter mvi = boost::vertices(*this);
+		std::cout << "Node id's " << std::endl;
+		GLubyte nodeIdColor[3];
+		for (; mvi.first != mvi.second; ++mvi)
+		{
+			BMetaNode *node = &operator[](*mvi.first);
+			int degree = boost::degree(*mvi.first, *this);
+
+			if ((degree == 1 && !nodeOptions.showEndpoints) || (degree > 2 && !nodeOptions.showJunctions) || degree == 2)
+			{
+				continue;
+			}
+
+
+			bool isSelected = false;
+
+			float scale = 0.0;
+
+			if (onlyDisplaySelectedComponents)
+			{
+				if (node->connectedComponent != selectedComponent1 && node->connectedComponent != selectedComponent2)
+				{
+					continue;
+				}
+			}
+
+			int num = (*mvi.first);
+			nodeIdColor[0] = (num & 0x000000FF) >> 0;
+			nodeIdColor[1] = (num & 0x0000FF00) >> 8;
+			nodeIdColor[2] = (num & 0x00FF0000) >> 16;
+
+			if ((*mvi.first == selectNode1 && selectNode1Valid) || (*mvi.first == selectNode2 && selectNode2Valid))
+			{
+				isSelected = true;
+			}
+
+			if (degree <= 1)
+			{
+				scale = nodeOptions.endpointScale;
+			}
+			else if (degree > 2)
+			{
+				scale = nodeOptions.junctionScale;
+			}
+
+			if (isSelected)
+			{
+				scale *= nodeSelectionScaling;
+			}
+
+			if (degree == 0)
+			{
+				drawCube.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+			}
+
+			else
+			{
+				drawSphere.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+			}
 		}
 
-		//if (selectVertValid)
-		//{
-		//	nodeColor = selectionColor;
-		//	Point3d *p = &mSkeleton[selectVert];
-		//	drawSphere.fancierDraw(nodeColor, p->x(), p->y(), p->z(), nodeOptions.endpointScale * nodeSelectionScaling);
-		//}
+		glPopMatrix();
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
 	}
+
+
+	void BMetaGraph::vertPickRender()
+	{
+		glDisable(GL_LIGHTING);
+		glClearColor(1.0, 1.0, 1.0, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadMatrixf(projectionTransform);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadMatrixf(modelViewTransform);
+
+
+		metaEdgeIter mei = boost::edges(*this);
+
+		GLubyte vertIdColor[3];
+		
+		float scale = 0.5 * (nodeOptions.endpointScale + nodeOptions.junctionScale);
+		for (; mei.first != mei.second; ++mei)
+		{
+			BMetaEdge *e = &operator[](*mei.first);
+			if (onlyDisplaySelectedComponents)
+			{
+				if (e->connectedComponent != selectedComponent1 && e->connectedComponent != selectedComponent2)
+				{
+					continue;
+				}
+			}
+
+			//we only need to render the middle vertices (not endpoints eg. metanodes) because we have already passed over those in the picking loop
+			for (int i = 1; i < e->mVertices.size() - 1; ++i)
+			{
+				SkelVert v = e->mVertices[i];
+				vertIdColor[0] = (v & 0x000000FF) >> 0;
+				vertIdColor[1] = (v & 0x0000FF00) >> 8;
+				vertIdColor[2] = (v & 0x00FF0000) >> 16;
+				Point3d *p = &mSkeleton[v];
+				drawSphere.pickDraw(vertIdColor, p->x(), p->y(), p->z(), scale);
+			}
+		}
+
+		glPopMatrix();
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+	}
+
 
 	void BMetaGraph::drawBoxes()
 	{
@@ -607,24 +710,28 @@ namespace Roots
 			}
 		}
 
-		//GLfloat boxColor[4] = { 1.0, 0.0, 1.0, 1.0 };
-		//for (float x = -10; x < 11; x += 8)
-		//{
-		//	for (float y = -10; y < 11; y += 5)
-		//	{
-		//		for (float z = -10; z < 11; z += 3)
-		//		{
-		//			drawCube.fancierDraw(boxColor, x, y, z, 1.0);
-		//		}
-		//	}
-		//}
-
 	}
 
 	void BMetaGraph::draw()
 	{
+		if (useArcball)
+		{
+			//glMatrixMode(GL_MODELVIEW);
+			glTranslatef(eyeShiftX, eyeShiftY, -mSkeleton.mRadius * 2);
+			arcball_rotate();
+			glTranslatef(-viewCenter.x(), -viewCenter.y(), -viewCenter.z());
+		}
+		glEnable(GL_LIGHTING);
 		drawNodes();
+		glDisable(GL_LIGHTING);
 		drawEdges();
 		drawBoxes();
+		glGetFloatv(GL_MODELVIEW_MATRIX, modelViewTransform);
+		glGetFloatv(GL_PROJECTION_MATRIX, projectionTransform);
+		if (displayMesh)
+		{
+			alphaMesh.render();
+		}
+		glEnable(GL_LIGHTING);
 	}
 }

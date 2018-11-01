@@ -99,8 +99,24 @@ void arcball_setzoom(float radius, vec eye, vec up)
   glGetIntegerv(GL_VIEWPORT,ab_glv);
 }
 
+void arcball_setSpeed(float radius)
+{
+	ab_sphere = radius; // sphere radius
+	ab_sphere2 = ab_sphere * ab_sphere;
+	glGetDoublev(GL_PROJECTION_MATRIX, ab_glp);
+	glGetIntegerv(GL_VIEWPORT, ab_glv);
+}
+
 // affect the arcball's orientation on openGL
 void arcball_rotate() { glMultMatrixf(ab_quat); }
+
+void arcball_applyRotation(vec &v)
+{
+	float norm = 1;// ab_quat[12] + ab_quat[13] + ab_quat[14] + ab_quat[15];
+	v.x = (ab_quat[0] * v.x + ab_quat[1] * v.y + ab_quat[2] * v.z) / norm;
+	v.y = (ab_quat[4] * v.x + ab_quat[5] * v.y + ab_quat[6] * v.z) / norm;
+	v.z = (ab_quat[8] * v.x + ab_quat[9] * v.y + ab_quat[10] * v.z) / norm;
+}
 
 // convert the quaternion into a rotation matrix
 static void quaternion(GLfloat* q, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
@@ -190,7 +206,7 @@ void arcball_start(int mx, int my)
 }
 
 // update current arcball rotation
-void arcball_move(int mx, int my)
+void arcball_move(int mx, int my, float zoom)
 {
   if(ab_planar)
   {
@@ -226,10 +242,16 @@ void arcball_move(int mx, int my)
     GLfloat cos2a = ab_start*ab_curr;
     GLfloat sina = sqrt((1.0 - cos2a)*0.5);
     GLfloat cosa = sqrt((1.0 + cos2a)*0.5);
+	cosa = std::fmin(1.0, cosa);
     vec cross = (ab_start^ab_curr).unit() * sina;
     quaternion(ab_next,cross.x,cross.y,cross.z,cosa);
 
     // update the rotation matrix
     quatnext(ab_quat,ab_last,ab_next);
   }
+}
+
+float arcball_getRad()
+{
+	return ab_sphere;
 }

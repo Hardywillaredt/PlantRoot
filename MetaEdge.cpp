@@ -232,40 +232,6 @@ namespace Roots
 
 
 
-
-	//void MetaEdge::buildDescendants()
-	//{
-	//	buildDescendantsAtNode(mChildNode->mSrcVert);
-	//	//if this is the primary root, then we also need to build out children from its 'parent' node.
-	//	if(mOrder == 0)
-	//	{
-	//		buildDescendantsAtNode(mParentNode->mSrcVert);
-	//	}
-	//}
-
-	//void MetaEdge::buildDescendantsAtNode(int vertIndex)
-	//{
-	//	for each(int neighborVert in mSrcSkel->mNeighbors[vertIndex])
-	//	{
-	//		if (!vertsInMetaEdge[neighborVert])
-	//		{
-	//			MetaEdge *child = new MetaEdge(mSrcSkel, mParentNode->mSrcVert, neighborVert, this);
-	//			child->buildDescendants();
-	//			mChildren.push_back(child);
-	//		}
-	//		else
-	//		{
-	//			//if the neighbor is in a metaEdge already, and that neighbor is neither the second or second last
-	//			//vertex on this edge, then there must be a loop.  Set the is loop indicator.
-	//			if(neighborVert != mVertices[1] && neighborVert != mVertices[mVertices.size() - 2])
-	//			{
-	//				std::cout << "Loop Found" << std::endl;
-	//				mIsPartOfLoop = true;
-	//			}
-	//		}
-	//	}
-	//}
-
 	//MetaEdge* MetaEdge::recursiveLoad(std::vector<std::string> lines, int lineToLoad, Skeleton* srcSkeleton, bool isTopDown)
 	//{
 	//	std::string myLine = lines[lineToLoad];

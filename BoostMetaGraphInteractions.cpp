@@ -1,6 +1,14 @@
 #include "BoostMetaGraph.h"
 #include <stdio.h>
 #include <iostream>
+
+#ifdef WITH_OPENCV
+	#include "opencv2/opencv.hpp"
+	#include "opencv2/highgui.hpp"
+#endif // WITH_OPENCV
+
+
+
 namespace
 {
 	struct mvec
@@ -33,6 +41,12 @@ namespace
 			{
 				data[i] = p[i];
 			}
+		}
+		mvec(vec v)
+		{
+			data[0] = v.x;
+			data[1] = v.y;
+			data[2] = v.z;
 		}
 		float& operator[](size_t i)
 		{
@@ -82,6 +96,7 @@ namespace
 			}
 			return result;
 		}
+
 		double norm()
 		{
 			double result = 0.0;
@@ -117,8 +132,33 @@ namespace
 			result[3] = operator[](0) * other[1] - operator[](1) * other[0];
 			return result;
 		}
+
+		vec toVec()
+		{
+			return vec(data[0], data[1], data[2]);
+		}
 	};
+
+	std::ostream& operator<<(std::ostream& o, mvec a)
+	{
+		return o << "x : " << a.data[0] << " y : " << a.data[1] << " z : " << a.data[2] << std::endl;
+	}
 	
+	struct mat44
+	{
+		float data[16];
+
+		std::vector<float> operator*(std::vector<float> avec)
+		{
+			std::vector<float> result = { 0, 0, 0, 0 };
+			result[0] = data[0] * avec[0] + data[1] * avec[1] + data[2] * avec[2] + data[3] * avec[3];
+			result[1] = data[4] * avec[0] + data[5] * avec[1] + data[6] * avec[2] + data[7] * avec[3];
+			result[2] = data[8] * avec[0] + data[9] * avec[1] + data[10] * avec[2] + data[11] * avec[3];
+			result[3] = data[12] * avec[0] + data[13] * avec[1] + data[14] * avec[2] + data[15] * avec[3];
+			return result;
+		}
+	};
+
 	//sets hitDist to -1 if it is not a valid hit
 	void linePick(mvec rayDir, mvec rayOrigin, mvec p0, mvec p1, float &rayToRayDist, float &hitDist)
 	{
@@ -194,118 +234,18 @@ namespace
 	}
 }
 
+
+
 namespace Roots
 {
 
-	//void BMetaGraph::selectMetaNode(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ)
-	//{
-	//	MetaV node;
-	//	bool isValid = false;
-
-	//	node = getFirstMetaNodeHit(eyeX, eyeY, eyeZ, lookX, lookY, lookZ, isValid);
-
-	//	if (isValid)
-	//	{
-	//		//if the 'lead' nnode is already selected
-	//		if (selectNode1Valid)
-	//		{
-	//			//if we reselect the lead node, then unselect it, leaving the follow node as the lead and return
-	//			if (node == selectNode1)
-	//			{
-	//				selectNode1Valid = selectNode2Valid;
-	//				selectNode1 = selectNode2;
-	//				selectNode2Valid = false;
-	//				return;
-	//			}
-	//			//if the 'follow' node is already selected and we did not select the lead node again
-	//			if (selectNode2Valid)
-	//			{
-	//				//if the 'follow' node is selected and we picked it again, remove the follow node
-	//				if (node == selectNode2)
-	//				{
-	//					selectNode2Valid = false;
-	//					return;
-	//				}
-	//				//if the follow node is selected but we didn't pick either it or the lead node
-	//				else
-	//				{
-	//					//if the new node is on the same component as the lead node but not the same as the follow,
-	//					//replace the lead node with this one and leave the follow node alone
-	//					if (operator[](node).connectedComponent == operator[](selectNode1).connectedComponent
-	//						&& operator[](node).connectedComponent != operator[](selectNode2).connectedComponent)
-	//					{
-	//						selectNode1Valid = true;
-	//						selectNode1 = node;
-	//					}
-	//					//in all other circumstances, replace the trailing node with the lead node and the
-	//					//lead node with this node
-	//					else
-	//					{
-	//						selectNode2Valid = selectNode1Valid;
-	//						selectNode2 = selectNode1;
-
-	//						selectNode1 = node;
-	//						selectNode1Valid = true;
-	//						return;
-	//					}
-	//				}
-	//			}
-	//			//if the 'follow' node is unselected then set the follow node to the lead node and the lead node as this
-	//			else
-	//			{
-	//				selectNode2Valid = selectNode1Valid;
-	//				selectNode2 = selectNode1;
-
-	//				selectNode1 = node;
-	//				selectNode1Valid = true;
-	//				return;
-	//			}
-	//		}
-	//		//if no lead node selected this will become the lead node
-	//		else
-	//		{
-	//			selectNode1 = node;
-	//			selectNode1Valid = true;
-	//		}
-	//	}
-	//}
-	//void BMetaGraph::selectPromotionNode(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ)
-	//{
-	//	SkelVert vert;
-	//	bool isValid = false;
-	//	vert = getFirstSkelNodeHit(eyeX, eyeY, eyeZ, lookX, lookY, lookZ, isValid);
-	//	std::cout << "Selecting vert " << std::endl;
-	//	if (isValid)
-	//	{
-	//		std::cout << "Vert is valid " << std::endl;
-	//		if (selectVertValid)
-	//		{
-	//			//if we reselect the same vertex, then remove it
-	//			if (vert == selectVert)
-	//			{
-	//				selectVertValid = false;
-	//			}
-	//			else
-	//			{
-	//				selectVert = vert;
-	//				selectVertValid = true;
-	//			}
-	//		}
-	//		else
-	//		{
-	//			std::cout << "First vert selected, set to selectVert " << vert << std::endl;
-	//			selectVert = vert;
-	//			selectVertValid = true;
-	//		}
-	//	}
-	//}
-
-	void BMetaGraph::selectConnectionNode(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ)
+	void BMetaGraph::selectConnectionNode(int mouseX, int mouseY)
 	{
 		MetaV node;
 		bool isValid = false;
 
-		node = getFirstMetaNodeHit(eyeX, eyeY, eyeZ, lookX, lookY, lookZ, isValid);
+		node = selectNodeByRender(mouseX, mouseY, isValid);
+
 		if (isValid)
 		{
 			privateSelectConnectionNode(operator[](node).mSrcVert, operator[](node).connectedComponent);
@@ -314,7 +254,7 @@ namespace Roots
 		{
 			SkelVert vert;
 			isValid = false;
-			vert = getFirstSkelNodeHit(eyeX, eyeY, eyeZ, lookX, lookY, lookZ, isValid);
+			vert = selectVertByRender(mouseX, mouseY, isValid);
 			if (isValid)
 			{
 				metaEdgeIter mei = boost::edges(*this);
@@ -339,15 +279,6 @@ namespace Roots
 				privateSelectConnectionNode(vert, connectedComponent);
 			}
 		}
-		//if (isValid)
-		//{
-		//	std::cout << "...Node params... " << std::endl;
-		//	std::cout << "Degree : " << boost::degree(node, *this) << std::endl;
-		//	std::cout << "Component : " << operator[](node).connectedComponent << std::endl;
-		//	std::cout << "Thickness : " << operator[](node).nodeThickness << std::endl;
-		//	std::cout << "Width : " << operator[](node).nodeWidth << std::endl;
-		//	std::cout << "................." << std::endl;
-		//}
 	}
 
 	void BMetaGraph::privateSelectConnectionNode(SkelVert nodeVert, int selectComponent)
@@ -469,7 +400,7 @@ namespace Roots
 			if (vertNodeMap.count(selectNode2) == 0)
 			{
 				std::cout << "Creating node 2 " << std::endl;
-				selectNode2 = addNode(selectVert2, &mSkeleton, true);
+				selectNode2 = addNode(selectVert2, &mSkeleton);
 				operator[](selectNode2).connectedComponent = component2;
 				operator[](selectNode2).updateColors(nodeOptions);
 			}
@@ -482,7 +413,7 @@ namespace Roots
 			if (vertNodeMap.count(selectNode1) == 0)
 			{
 				std::cout << "Creating node 1" << std::endl;
-				selectNode1 = addNode(selectVert1, &mSkeleton, true);
+				selectNode1 = addNode(selectVert1, &mSkeleton);
 				operator[](selectNode1).connectedComponent = component1;
 				operator[](selectNode1).updateColors(nodeOptions);
 			}
@@ -490,147 +421,23 @@ namespace Roots
 		}
 
 		std::cout << "Leaving private selection " << std::endl;
-
-		
-		////if the 'lead' nnode is already selected
-		//if (selectNode1Valid)
-		//{
-		//	//if we reselect the lead node, then unselect it, leaving the follow node as the lead and return
-		//	if (node == selectNode1)
-		//	{
-		//		if (boost::degree(selectNode1, *this) == 0)
-		//		{
-		//			if (selectNode1 < selectNode2)
-		//			{
-		//				selectNode2 -= 1;
-		//			}
-		//			if (selectNode1 < node)
-		//			{
-		//				node -= 1;
-		//			}
-		//			removeNode(selectNode1);
-		//		}
-		//		selectNode1Valid = selectNode2Valid;
-		//		selectNode1Promoted = selectNode2Promoted;
-		//		selectNode1 = selectNode2;
-
-		//		selectNode2Valid = false;
-		//		selectNode2Promoted = false;
-		//		return;
-		//	}
-		//	//if the 'follow' node is already selected and we did not select the lead node again
-		//	if (selectNode2Valid)
-		//	{
-		//		//if the 'follow' node is selected and we picked it again, remove the follow node
-		//		if (node == selectNode2)
-		//		{
-		//			if (boost::degree(selectNode2, *this) == 0)
-		//			{
-		//				if (selectNode2 < selectNode1)
-		//				{
-		//					selectNode1 -= 1;
-		//				}
-		//				if (selectNode2 < node)
-		//				{
-		//					node -= 1;
-		//				}
-		//				removeNode(selectNode2);
-		//			}
-
-		//			selectNode2Valid = false;
-		//			selectNode2Promoted = false;
-		//			return;
-		//		}
-		//		//if the follow node is selected but we didn't pick either it or the lead node
-		//		else
-		//		{
-		//			//if the new node is on the same component as the lead node but not the same as the follow,
-		//			//replace the lead node with this one and leave the follow node alone
-		//			if (operator[](node).connectedComponent == operator[](selectNode1).connectedComponent
-		//				&& operator[](node).connectedComponent != operator[](selectNode2).connectedComponent)
-		//			{
-		//				if (boost::degree(selectNode1, *this) == 0)
-		//				{
-		//					if (selectNode1 < selectNode2)
-		//					{
-		//						selectNode2 -= 1;
-		//					}
-		//					if (selectNode1 < node)
-		//					{
-		//						node -= 1;
-		//					}
-		//					removeNode(selectNode1);
-		//				}
-		//				selectNode1Valid = true;
-		//				selectNode1 = node;
-		//				selectNode1Promoted = isPromoted;
-		//			}
-		//			//in all other circumstances, replace the trailing node with the lead node and the
-		//			//lead node with this node
-		//			else
-		//			{
-		//				if (boost::degree(selectNode2, *this) == 0)
-		//				{
-		//					if (selectNode2 < selectNode1)
-		//					{
-		//						selectNode1 -= 1;
-		//					}
-		//					if (selectNode2 < node)
-		//					{
-		//						node -= 1;
-		//					}
-		//					removeNode(selectNode2);
-		//				}
-		//				selectNode2Valid = selectNode1Valid;
-		//				selectNode2Promoted = selectNode1Promoted;
-		//				selectNode2 = selectNode1;
-
-		//				selectNode1 = node;
-		//				selectNode1Valid = true;
-		//				selectNode1Promoted = isPromoted;
-		//				return;
-		//			}
-		//		}
-		//	}
-		//	//if the 'follow' node is unselected then set the follow node to the lead node and the lead node as this
-		//	else
-		//	{
-		//		selectNode2Valid = selectNode1Valid;
-		//		selectNode2 = selectNode1;
-		//		selectNode2Promoted = selectNode1Promoted;
-
-		//		selectNode1 = node;
-		//		selectNode1Valid = true;
-		//		selectNode1Promoted = isPromoted;
-		//		return;
-		//	}
-		//}
-		////if no lead node selected this will become the lead node
-		//else
-		//{
-		//	selectNode1 = node;
-		//	selectNode1Valid = true;
-		//	selectNode1Promoted = isPromoted;
-		//}
 	}
 
-	void BMetaGraph::selectBreakEdge(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ)
+
+	void BMetaGraph::selectBreakEdge(int mouseX, int mouseY)
 	{
-		std::pair<MetaV, MetaV> edge;
 		bool isValid = false;
 
-		edge = getFirstMetaEdgeHit(eyeX, eyeY, eyeZ, lookX, lookY, lookZ, isValid);
+		MetaE edge = selectEdgeByRender(mouseX, mouseY, isValid);
+
 
 		//if we have a valid selection do stuff
 		if (isValid)
 		{
-			//unselectAllEdges();
 			//if there is an existing break edge we want to unselect it
 			if (breakEdgeValid)
 			{
-				//if we selected the existing break edge, simply unselect that edge and return
-				if ((edge.first == breakEdge.first || edge.first == breakEdge.second) && 
-					(edge.second == breakEdge.first || edge.second == breakEdge.second))
+				if (edge == breakEdge)
 				{
 					std::cout << "Breakedge == edge -> unselect break edge" << std::endl;
 					unselectEdge(edge);
@@ -641,8 +448,8 @@ namespace Roots
 				else
 				{
 					std::cout << "Breakedge != edge -> unselect break edge and assign as edge" << std::endl;
-					selectEdge(edge);
 					unselectEdge(breakEdge);
+					selectEdge(edge);
 					breakEdge = edge;
 					breakEdgeValid = true;
 					std::cout << "Finished assignment " << std::endl;
@@ -662,7 +469,7 @@ namespace Roots
 		{
 			MetaE e;
 			bool exists;
-			boost::tie(e, exists) = boost::edge(breakEdge.first, breakEdge.second, *this);
+			e = breakEdge;
 
 			std::cout << "...Edge parameters..." << std::endl;
 			std::cout << "Component : " << operator[](e).connectedComponent << std::endl;
@@ -671,44 +478,45 @@ namespace Roots
 			std::cout << "IsBridge : " << std::to_string(operator[](e).isBridge) << std::endl;
 			std::cout << "v0 " << vertNodeMap[operator[](e).start()] << std::endl;
 			std::cout << "v1 " << vertNodeMap[operator[](e).end()] << std::endl;
+			std::cout << "edgeId " << operator[](e).instanceId << std::endl;
 			std::cout << "....................." << std::endl;
 		}
 	}
-	void BMetaGraph::selectSplitEdge(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ)
+
+
+	void BMetaGraph::selectSplitEdge(int mouseX, int mouseY)
 	{
-		std::pair<MetaV, MetaV> edge;
+		MetaE edge;
 		bool isValid = false;
-		edge = getFirstMetaEdgeHit(eyeX, eyeY, eyeZ, lookX, lookY, lookZ, isValid);
+		edge = selectEdgeByRender(mouseX, mouseY, isValid);
 		if (!isValid)
 		{
 			return;
 		}
-		MetaE edgeMetaE;
-		bool exists = false;
-		boost::tie(edgeMetaE, exists) = boost::edge(edge.first, edge.second, *this);
+		MetaE edgeMetaE = edge;
+		bool exists = true;
+
 		if (exists)
 		{
 			BMetaEdge *selectedEdge = &operator[](edgeMetaE);
 
 			if (splitEdgeValid)
 			{
-				MetaE splitEdgeE;
-				boost::tie(splitEdgeE, exists) = boost::edge(splitEdge.first, splitEdge.second, *this);
+				MetaE splitEdgeE = splitEdge;
+
 				BMetaEdge *existingEdge = &operator[](splitEdgeE);
-				//if there is already a splitEdge and it matches the selected, unselect it and return
-				if (edge.first == splitEdge.first && edge.second == splitEdge.second ||
-					edge.second == splitEdge.first && edge.first == splitEdge.second)
+
+				if (edge == splitEdge)
 				{
 					splitEdgeValid = false;
 					unselectEdge(edge);
 				}
-				//if there is salready a spltEdge and it is neighbors with the selected, add the selected to the neighbors list
-				else if (edge.first == splitEdge.first || edge.second == splitEdge.first || 
-					edge.first == splitEdge.second || edge.second == splitEdge.second)
+				else if (edge.m_source == splitEdge.m_source || edge.m_target == splitEdge.m_source ||
+					edge.m_source == splitEdge.m_target || edge.m_target == splitEdge.m_target)
 				{
 					//if the neighbor is already in the neighbors list, then remove it and return
 					bool inlist = false;
-					for (std::pair<MetaV, MetaV> neighbor : splitNeighbors)
+					for (MetaE neighbor : splitNeighbors)
 					{
 						if (neighbor == edge)
 						{
@@ -725,12 +533,13 @@ namespace Roots
 						splitEdgeValid = true;
 					}
 				}
+
 				//if there is already a split edge and this edge is not its neighbor, then replace the split edge
 				//and unselect all existing edges
 				else
 				{
 					unselectEdge(splitEdge);
-					for (std::pair<MetaV, MetaV> neighbor : splitNeighbors)
+					for (MetaE neighbor : splitNeighbors)
 					{
 						unselectEdge(neighbor);
 					}
@@ -744,11 +553,11 @@ namespace Roots
 			{
 				splitEdgeValid = true;
 				splitEdge = edge;
-				selectEdge(splitEdge);
-				for (std::pair<MetaV, MetaV> neighbor : splitNeighbors)
+				for (MetaE neighbor : splitNeighbors)
 				{
 					unselectEdge(neighbor);
 				}
+				selectEdge(splitEdge);
 				splitNeighbors = {};
 			}
 		}
@@ -757,8 +566,7 @@ namespace Roots
 		{
 			MetaE e;
 			bool exists;
-			boost::tie(e, exists) = boost::edge(splitEdge.first, splitEdge.second, *this);
-
+			e = splitEdge;
 			std::cout << "...Edge parameters..." << std::endl;
 			std::cout << "Component : " << operator[](e).connectedComponent << std::endl;
 			std::cout << "Thickness : " << operator[](e).averageThickness << std::endl;
@@ -769,6 +577,8 @@ namespace Roots
 
 	}
 
+
+
 	MetaV BMetaGraph::getFirstMetaNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid)
 	{
 		mvec rayOrigin = mvec(eyeX, eyeY, eyeZ);
@@ -777,7 +587,9 @@ namespace Roots
 		bool hitFound = false;
 		float minDist = 100000000;
 		MetaV nodeHit = 0;
-		
+		mat44 modelView, projection;
+		glGetFloatv(GL_MODELVIEW_MATRIX, modelView.data);
+		glGetFloatv(GL_PROJECTION_MATRIX, projection.data);
 		metaVertIter mvi = boost::vertices(*this);
 		for (; mvi.first != mvi.second; ++mvi)
 		{
@@ -789,6 +601,23 @@ namespace Roots
 					continue;
 				}
 			}
+
+			std::vector<float> pointInitialPos = { node->p[0], node->p[1], node->p[2], 1 };
+
+			std::vector<float> pointPos = projection * (modelView * pointInitialPos);
+
+			std::vector<float> pointPos3d = { pointPos[0] / pointPos[3], pointPos[1] / pointPos[3], pointPos[2] / pointPos[3] };
+
+			GLint window[4];
+			glGetIntegerv(GL_VIEWPORT, window);
+
+			std::vector<float> windowSpacePos = { 0, 0 };
+			windowSpacePos[0] = ((pointPos3d[0] + 1.0) / 2.0) * window[2] + window[0];
+			windowSpacePos[1] = ((pointPos3d[1] + 1.0) / 2.0) * window[3] + window[1];
+			windowSpacePos[0] = (windowSpacePos[0] / window[2] - 0.5) / -0.0658;
+			windowSpacePos[1] = (windowSpacePos[1] / window[3] - 0.5) / 0.0658;
+			std::cout << "Window x : " << windowSpacePos[0] << " y : " << windowSpacePos[1] << std::endl;
+
 			mvec point = mvec(node->p);
 
 			bool hits = false;
@@ -825,6 +654,100 @@ namespace Roots
 		return nodeHit;
 
 	}
+
+	MetaV BMetaGraph::selectNodeByRender(int mouseX, int mouseY, bool &isValid)
+	{
+		std::cout << "Selecting node by render" << std::endl;
+		nodePickRender();
+		glFlush();
+		glFinish();
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+#ifdef WITH_OPENCV
+		unsigned char img[480000];
+		glReadPixels(mouseX - 200, mouseY - 200, 400, 400, GL_RGB, GL_UNSIGNED_BYTE, img);
+
+		cv::Mat clickMat = cv::Mat(400, 400, CV_8UC3);
+
+		uchar *clickptr = clickMat.ptr<uchar>();
+		uchar *imgptr;
+		for (int row = 0; row < 400; ++row)
+		{
+			clickptr = clickMat.ptr<uchar>(399 - row);
+			imgptr = img + 3 * 400 * row;
+			for (int col = 0; col < 400; ++col)
+			{
+				for (int c = 0; c < 3; ++c)
+				{
+					clickptr[col * 3 + c] = imgptr[col * 3 + c];
+				}
+			}
+		}
+
+		cv::namedWindow("clickArea", CV_WINDOW_NORMAL);
+		cv::imshow("clickArea", clickMat);
+		cv::waitKey();
+#endif // WITH_OPENCV
+
+		
+		unsigned char data[3];
+		glReadPixels(mouseX, mouseY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, data);
+		int pickedID =
+			data[0] +
+			data[1] * 256 +
+			data[2] * 256 * 256;
+		std::cout << "Picked Id " << pickedID << std::endl;
+
+		std::cout << "RGB " << (int)data[0] << " " << (int)data[1] << " " << (int)data[2] << std::endl;
+
+		if (this->m_vertices.size() > pickedID)
+		{
+			MetaV hit = pickedID;
+			isValid = true;
+			return hit;
+		}
+		else
+		{
+			isValid = false;
+			return 0;
+		}
+	}
+
+	SkelVert BMetaGraph::selectVertByRender(int mouseX, int mouseY, bool &isValid)
+	{
+		vertPickRender();
+		glFlush();
+		glFinish();
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+		// Read the pixel at the center of the screen.
+		// You can also use glfwGetMousePos().
+		// Ultra-mega-over slow too, even for 1 pixel, 
+		// because the framebuffer is on the GPU.
+		unsigned char data[4];
+		glReadPixels(mouseX, mouseY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+		int pickedID =
+			data[0] +
+			data[1] * 256 +
+			data[2] * 256 * 256;
+
+		if (mSkeleton.m_vertices.size() > pickedID)
+		{
+			SkelVert hit = pickedID;
+			isValid = true;
+			return hit;
+		}
+		else
+		{
+			isValid = false;
+			return 0;
+		}
+	}
+
+
 	SkelVert BMetaGraph::getFirstSkelNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid)
 	{
 		mvec rayOrigin = mvec(eyeX, eyeY, eyeZ);
@@ -840,6 +763,12 @@ namespace Roots
 			Point3d *vert = &mSkeleton[*svi.first];
 
 			mvec point = mvec(*vert);
+
+			vec voint = point.toVec();
+
+			arcball_applyRotation(voint);
+
+			point = mvec(voint);
 
 			bool hits = false;
 			float hitDist = 10000000;
@@ -864,8 +793,6 @@ namespace Roots
 
 	std::pair<MetaV, MetaV> BMetaGraph::getFirstMetaEdgeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid)
 	{
-
-
 		mvec rayOrigin = mvec(eyeX, eyeY, eyeZ);
 		mvec rayDir = mvec(lookX, lookY, lookZ);
 
@@ -967,7 +894,45 @@ namespace Roots
 			isValid = false;
 			return std::make_pair(MetaV(0), MetaV(0));
 		}
-		
+	}
+
+
+	MetaE BMetaGraph::selectEdgeByRender(int mouseX, int mouseY, bool &isValid)
+	{
+		edgePickRender();
+		glFlush();
+		glFinish();
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+		// Read the pixel at the center of the screen.
+		// You can also use glfwGetMousePos().
+		// Ultra-mega-over slow too, even for 1 pixel, 
+		// because the framebuffer is on the GPU.
+		unsigned char data[3];
+		glReadPixels(mouseX, mouseY, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+		int pickedID =
+			data[0] +
+			data[1] * 256 +
+			data[2] * 256 * 256;
+		std::cout << "Edge picked ID " << pickedID << std::endl;
+
+		metaEdgeIter mei = boost::edges(*this);
+
+		for (; mei.first != mei.second; ++mei)
+		{
+			BMetaEdge *e = &operator[](*mei.first);
+			if (e->instanceId == pickedID)
+			{
+				isValid = true;
+				return *mei.first;
+			}
+		}
+
+		isValid = false;
+		return *(--mei.first);
+		//return std::make_pair<MetaV, MetaV>(0, 1);
 	}
 
 
@@ -992,7 +957,7 @@ namespace Roots
 		if (splitEdgeValid)
 		{
 			unselectEdge(splitEdge);
-			for (std::pair<MetaV, MetaV> edge : splitNeighbors)
+			for (MetaE edge : splitNeighbors)
 			{
 				unselectEdge(edge);
 			}
@@ -1025,9 +990,15 @@ namespace Roots
 		boost::tie(edge, exists) = boost::edge(toUnselect.first, toUnselect.second, *this);
 		if (exists)
 		{
-			operator[](edge).unselect(edgeColors);
+			operator[](edge).unselect(vertexColors);
 		}
+		buildEdgeVBOs();
 		
+	}
+
+	void BMetaGraph::unselectEdge(MetaE edge)
+	{
+		operator[](edge).unselect(vertexColors);
 	}
 
 	void BMetaGraph::selectEdge(std::pair<MetaV, MetaV> toSelect)
@@ -1037,8 +1008,14 @@ namespace Roots
 		boost::tie(edge, exists) = boost::edge(toSelect.first, toSelect.second, *this);
 		if (exists)
 		{
-			operator[](edge).select(edgeOptions.flatSelectionColor, edgeColors);
+			operator[](edge).select(edgeOptions.flatSelectionColor, vertexColors);
 		}
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::selectEdge(MetaE edge)
+	{
+		operator[](edge).select(edgeOptions.flatSelectionColor, vertexColors);
 	}
 
 	void BMetaGraph::startRotation(int mx, int my)
@@ -1046,9 +1023,61 @@ namespace Roots
 		arcball_start(mx, my);
 	}
 
-	void BMetaGraph::mouseMoved(int mx, int my)
+	void BMetaGraph::mouseMoved(int mx, int my, float zoom)
 	{
-		arcball_move(mx, my);
+		arcball_move(mx, my, zoom);
+	}
+	void BMetaGraph::shiftEye(float xShift, float yShift)
+	{
+		eyeShiftX += xShift * mSkeleton.mRadius * 2;
+		eyeShiftY += yShift * mSkeleton.mRadius * 2;
+	}
+
+	bool BMetaGraph::pickNewViewCenter(int mouseX, int mouseY)
+	{
+		MetaV node;
+		bool isValid = false;
+		Point3d newCenter = Point3d();
+
+		node = selectNodeByRender(mouseX, mouseY, isValid);
+
+		if (isValid)
+		{
+			newCenter = mSkeleton[operator[](node).mSrcVert];
+		}
+		else
+		{
+			SkelVert vert;
+			isValid = false;
+			vert = selectVertByRender(mouseX, mouseY, isValid);
+			if (isValid)
+			{
+				newCenter = mSkeleton[vert];
+			}
+		}
+		if (isValid)
+		{
+			viewCenter = newCenter;
+			eyeShiftX = 0;
+			eyeShiftY = 0;
+		}
+		std::cout << "selection is valid " << isValid << std::endl;
+		return isValid;
+	}
+
+	void BMetaGraph::changeRotationSpeed(bool increase)
+	{
+		float currentRad = arcball_getRad();
+		if (increase)
+		{
+			currentRad /= 1.1;
+			arcball_setSpeed(currentRad);
+		}
+		else
+		{
+			currentRad *= 1.1;
+			arcball_setSpeed(currentRad);
+		}
 	}
 
 	void BMetaGraph::setZoom(float rad, float eyex, float eyey, float eyez, float upx, float upy, float upz)

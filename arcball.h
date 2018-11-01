@@ -76,9 +76,13 @@ class vec // simple 3D vector class
 };
 
 extern void arcball_setzoom(float radius, vec eye, vec up);
+extern void arcball_setSpeed(float radius);
 extern void arcball_rotate();
+extern void arcball_applyRotation(vec &v);
 extern void arcball_reset();
 extern void arcball_start(int mx, int my);
-extern void arcball_move(int mx, int my);
+extern void arcball_move(int mx, int my, float zoom);
+
+extern float arcball_getRad();
 
 #endif

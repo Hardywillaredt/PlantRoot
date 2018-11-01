@@ -1,23 +1,18 @@
 #pragma once
 #include <iostream>
 #include "boost/python.hpp"
-//#include "json\json.h"
-//#include "Serializable.h"
 
 
 struct Point3d
 {
 public:
-	//serializable implementation >> //
-	//Point3d(Json::Value json);
-	//Json::Value ToJson();
-	// << serializable implementation//
-	float p[3];
+	
+	float p[6];
+
 	int id;
 
-	Point3d(float *aData, int index = 0);
 
-	Point3d(float ax, float ay, float az, int index = 0);
+	Point3d(float ax, float ay, float az, float thickness, float width, int index = 0);
 
 	Point3d();
 
@@ -36,6 +31,23 @@ public:
 	friend Point3d operator/(Point3d &p, float div);
 
 	friend Point3d operator*(Point3d &p, float mul);
+
+	bool operator==(Point3d &other)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			if (other.p[i] != p[i])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool operator!=(Point3d &other)
+	{
+		return !operator==(other);
+	}
 
 	bool operator<(const Point3d &other) const
 	{
@@ -56,6 +68,18 @@ public:
 	float z()
 	{
 		return p[2];
+	}
+	float thickness()
+	{
+		return p[3];
+	}
+	float width()
+	{
+		return p[4];
+	}
+	float ratio()
+	{
+		return p[5];
 	}
 	float mag();
 private:

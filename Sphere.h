@@ -42,6 +42,7 @@ namespace drawing
 		void init(double radius, int numSubdivisions);
 		void fancyDraw(float red, float green, float blue, float x, float y, float z, float scale);
 		void fancierDraw(GLfloat *color, float x, float y, float z, float scale);
+		void pickDraw(GLubyte *color, float x, float y, float z, float scale);
 	};
 
 	struct VBOCube
@@ -49,12 +50,12 @@ namespace drawing
 		double scale;
 		std::vector<GLfloat> vertices;
 		std::vector<GLuint> indices;
-
 		VBOCube(double radius);
 		VBOCube();
 
 		void init(float radius);
 		void fancierDraw(GLfloat *color, float x, float y, float z, float scale);
+		void pickDraw(GLubyte *color, float x, float y, float z, float scale);
 
 	};
 

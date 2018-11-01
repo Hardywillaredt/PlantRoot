@@ -2,8 +2,8 @@
 
 #include "Geometry.h"
 #include "RootAttributes.h"
-
-
+#include <map>
+#include "Face.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/config.hpp"
@@ -60,6 +60,16 @@ struct skelEdgeIter : std::pair<skelEIter, skelEIter>
 	}
 };
 
+enum ParsingOrder
+{
+	X = 0,
+	Y = 1,
+	Z = 2,
+	Thickness = 3,
+	Width = 4,
+	ParsingCount = 5
+};
+
 
 
 namespace Roots
@@ -75,8 +85,14 @@ namespace Roots
 		bool mBoundsFound;
 		/*Geometric center of the graph defined as the 3-axis midpoint of the bounds*/
 		Point3d mCenter;
+		Point3d originalCenter;
 		/*Geometric radius of the bounding sphere defined by the */
 		float mRadius;
+		std::map<ParsingOrder, int> mVertexParseOrder;
+		std::map<int, ParsingOrder> mVertexWriteOrder;
+
+		std::vector<GLfloat> glVertices;
+		std::vector<Face> faces;
 
 		
 
@@ -107,7 +123,7 @@ namespace Roots
 
 		returns - line number after the last line consumed for the loading process
 		*/
-		int loadFromLines(std::vector<std::string> lines, int startingLine, std::vector<GLfloat> &glVertices);
+		int loadFromLines(std::vector<std::string> &lines, int startingLine);
 
 		/*
 		External save operation, only save functionality for this class.
@@ -118,28 +134,32 @@ namespace Roots
 		*/
 		void writeToStream(std::ostream &out);
 
+		void writeDanPly(std::ostream &out);
+
 	private:
 		/*
 		Internal load operation for Wenzhen style skeletons.
 
 		Parameters and return same as LoadFromLines
 		*/
-		int loadWenzhenLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine = 0);
+		int loadWenzhenLines(std::vector<std::string> &lines, int startingLine = 0);
 
-		int loadDanPly(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine = 0);
+		int loadDanPly(std::vector<std::string> &lines, int startingLine = 0);
 
 		/*
 		Internal load operation for Ply-style skeletons.
 
 		Parameters and returns same as LoadFromLines
 		*/
-		int loadPlyStyleLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLing = 0);
+		int loadPlyStyleLines(std::vector<std::string> &lines, int startingLing = 0);
 
 		/*Simple callout function to load all vertices described by the provided set of lines.*/
-		void loadVertices(std::vector<std::string> lines, int &lineOn, int numVertices);
+		void loadVertices(std::vector<std::string> &lines, int &lineOn, int numVertices);
 		
 		/*Simple callout function to load all edges described by the provided set of lines.*/
-		void loadEdges(std::vector<std::string> lines, int &lineOn, int numEdges, std::vector<GLfloat> &glVertices);
+		void loadEdges(std::vector<std::string> &lines, int &lineOn, int numEdges);
+
+		void loadFaces(std::vector<std::string> &lines, int &lineOn, int numFaces);
 
 
 	public:
@@ -147,13 +167,16 @@ namespace Roots
 		alias that both adds the connection between v0 and v1 in the boost graph,
 		and the decoration edge_descriptor for the root attributes
 		*/
-		SkelEdge addEdge(int v0, int v1, RootAttributes attributes, std::vector<GLfloat> &glVertices);
+		SkelEdge addEdge(int v0, int v1);
 
 		/*
 		alias that both adds a new vertex to the boost graph, and adds the decoration
 		vertex_descriptor for the vertex 3d location
 		*/
 		SkelVert addVertex(Point3d pointLocation);
+
+		void updateGLVertices();
+
 
 
 		/*vvvvvvvvvvvvvvvvvvvvv GEOMETRIC MANIPULATIONS vvvvvvvvvvvvvvvvvvvvv*/
@@ -177,7 +200,7 @@ namespace Roots
 		Parameters:
 		newCenter - the desired centerpoint of the result graph
 		*/
-		BSkeleton recenterSkeleton(Point3d newCenter, std::vector<float> &vertices);
+		void recenterSkeleton(Point3d newCenter);
 
 	
 

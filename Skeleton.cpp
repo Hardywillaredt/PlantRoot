@@ -20,37 +20,6 @@ std::string Roots::Skeleton::endHeaderString = "end_header";
 namespace Roots
 {
 
-	//Skeleton::Skeleton(Json::Value json)
-	//{
-	//	int numVertices = json[vertexString].size();
-	//	int numEdges = json[edgeString].size();
-
-	//	mNumEdges = numEdges;
-	//	mNumVertices = numVertices;
-
-	//	mVerts = vertList(numVertices, Point3d());
-	//	Json::Value vertJson = json[vertexString];
-	//	for (int i = 0; i < numVertices; ++i)
-	//	{
-
-	//		mVerts[i] = Point3d(vertJson[0].asfloat(), vertJson[1].asfloat(), vertJson[2].asfloat());
-	//	}
-
-	//	Json::Value edgeJson = json[edgeString];
-	//	mEdges = std::vector<edgePtrList>(numVertices, edgePtrList());
-	//	for (int i = 0; i < numEdges; ++i)
-	//	{
-	//		SkeletonEdge edge = SkeletonEdge(edgeJson[i]);
-	//		AddEdge(edge);
-	//		//mEdges[edge.v0].push_back(new SkeletonEdge(edge));
-	//	}
-
-	//	for (int i = 0; i < mEdges.size(); ++i)
-	//	{
-	//		std::sort(mEdges[i].begin(), mEdges[i].end());
-	//	}
-	//}
-
 	Skeleton::Skeleton()
 		: mVerts(), mEdges(), mNumEdges(), mNumVertices(), mNeighbors() 
 	{
@@ -171,7 +140,6 @@ namespace Roots
 			}
 			else
 			{
-				//idk mang
 				//do nothing
 			}
 		}
@@ -214,50 +182,50 @@ namespace Roots
 	void Skeleton::LoadWenzhenStyleFile(std::istream &in, int numVerts, int numEdges, int numFaces)
 	{
 
-		mNumEdges = numEdges;
-		mNumVertices = numVerts;
-		Log::out << "Wenzhen file - vertices: " << mNumVertices << " edges: " << numEdges << std::endl;
-		mVerts = vertList(numVerts, Point3d());
-		
-		float x, y, z;
-		for (int i = 0; i < numVerts; ++i)
-		{
-			in >> x >> y >> z;
-			mVerts[i] = Point3d(x, y, z);
-		}
-		Log::out << "Successfully loaded all " << numVerts << " vertices" << std::endl;
+	//	mNumEdges = numEdges;
+	//	mNumVertices = numVerts;
+	//	Log::out << "Wenzhen file - vertices: " << mNumVertices << " edges: " << numEdges << std::endl;
+	//	mVerts = vertList(numVerts, Point3d());
+	//	
+	//	float x, y, z;
+	//	for (int i = 0; i < numVerts; ++i)
+	//	{
+	//		in >> x >> y >> z;
+	//		mVerts[i] = Point3d(x, y, z);
+	//	}
+	//	Log::out << "Successfully loaded all " << numVerts << " vertices" << std::endl;
 
-		mEdges = std::vector<edgeList>(numVerts, edgeList());
-		mNeighbors = std::vector<std::vector<int>>(mNumVertices, std::vector<int>());
-		int v0, v1;
-		std::vector<float> attributes = std::vector<float>(NumAttributes);
-		for (int i = 0; i < numEdges; ++i)
-		{
-			//std::cout << "Adding edge" << std::endl;
-			in >> v0 >> v1;
-			for (int att = 0; att < NumAttributes; ++att)
-			{
-				in >> attributes[att];
-			}
-			SkeletonEdge toAdd = SkeletonEdge(v0, v1, attributes);
-			AddEdge(toAdd);
-			//std::cout << "Edge added " << std::endl;
-		}
+	//	mEdges = std::vector<edgeList>(numVerts, edgeList());
+	//	mNeighbors = std::vector<std::vector<int>>(mNumVertices, std::vector<int>());
+	//	int v0, v1;
+	//	std::vector<float> attributes = std::vector<float>(NumAttributes);
+	//	for (int i = 0; i < numEdges; ++i)
+	//	{
+	//		//std::cout << "Adding edge" << std::endl;
+	//		in >> v0 >> v1;
+	//		for (int att = 0; att < NumAttributes; ++att)
+	//		{
+	//			in >> attributes[att];
+	//		}
+	//		SkeletonEdge toAdd = SkeletonEdge(v0, v1, attributes);
+	//		AddEdge(toAdd);
+	//		//std::cout << "Edge added " << std::endl;
+	//	}
 
-		Log::out << "Successfully loaded all " << numEdges << " edges" << std::endl;
+	//	Log::out << "Successfully loaded all " << numEdges << " edges" << std::endl;
 
-		for (int i = 0; i < mEdges.size(); ++i)
-		{
-			std::sort(mEdges[i].begin(), mEdges[i].end());
-		}
+	//	for (int i = 0; i < mEdges.size(); ++i)
+	//	{
+	//		std::sort(mEdges[i].begin(), mEdges[i].end());
+	//	}
 
-		if (!in.eof())
-		{
-			Log::out << "Not all data read from file, that is slightly strange" << std::endl;
-		}
-		float cx, cy, cz, r;
-		GetBoundingSphere(cx, cy, cz, r);
-		/////////////////////////////////// TO DO ->  DEAL WITH FACES   ///////////////////////////
+	//	if (!in.eof())
+	//	{
+	//		Log::out << "Not all data read from file, that is slightly strange" << std::endl;
+	//	}
+	//	float cx, cy, cz, r;
+	//	GetBoundingSphere(cx, cy, cz, r);
+	//	/////////////////////////////////// TO DO ->  DEAL WITH FACES   ///////////////////////////
 	}
 
 
@@ -433,50 +401,50 @@ namespace Roots
 
 	void Skeleton::GetBoundingSphere(float &cx, float &cy, float &cz, float &r)
 	{
-		FindBounds();
-		std::vector<Point3d> corners = {};
-		corners.push_back(Point3d(mLeftX, mBotY, mBackZ));
-		corners.push_back(Point3d(mLeftX, mBotY, mFrontZ));
-		corners.push_back(Point3d(mLeftX, mTopY, mBackZ));
-		corners.push_back(Point3d(mLeftX, mTopY, mFrontZ));
-		corners.push_back(Point3d(mRightX, mBotY, mBackZ));
-		corners.push_back(Point3d(mRightX, mBotY, mFrontZ));
-		corners.push_back(Point3d(mRightX, mTopY, mBackZ));
-		corners.push_back(Point3d(mRightX, mTopY, mFrontZ));
+		//FindBounds();
+		//std::vector<Point3d> corners = {};
+		//corners.push_back(Point3d(mLeftX, mBotY, mBackZ, 0, 0));
+		//corners.push_back(Point3d(mLeftX, mBotY, mFrontZ, 0, 0));
+		//corners.push_back(Point3d(mLeftX, mTopY, mBackZ, 0, 0));
+		//corners.push_back(Point3d(mLeftX, mTopY, mFrontZ, 0, 0));
+		//corners.push_back(Point3d(mRightX, mBotY, mBackZ, 0, 0));
+		//corners.push_back(Point3d(mRightX, mBotY, mFrontZ, 0, 0));
+		//corners.push_back(Point3d(mRightX, mTopY, mBackZ, 0, 0));
+		//corners.push_back(Point3d(mRightX, mTopY, mFrontZ, 0, 0));
 
-		float maxDist = 0.0;
-		float maxCX=0, maxCY=0, maxCZ=0, maxR=0;
-		for (int i = 0; i < corners.size(); ++i)
-		{
-			for (int k = i + 1; k < corners.size(); ++k)
-			{
-				Point3d dif = corners[k] - corners[i];
-				float dist = dif.mag();
-				if (dist > maxDist)
-				{
-					maxR = dist / 2;
-					Point3d sum = corners[k] + corners[i];
-					Point3d centerpoint = sum / 2;
-					//std::cout << "Point1 " << corners[k] << "Point2 " << corners[i] << "Center " << centerpoint;
-					maxCX = centerpoint.x();
-					maxCY = centerpoint.y();
-					maxCZ = centerpoint.z();
-				}
-			}
-		}
-		cx = maxCX;
-		cy = maxCY;
-		cz = maxCZ;
-		//pad the sphere a little bit for giggles
-		r = maxR * 1.1;
-		//std::cout << "Skeleton bounding sphere " << std::endl;
-		//std::cout << "cx: " << cx << " cy: " << cy << " cz: " << cz << " r: " << r << std::endl;
-		if (!originalCenterSet)
-		{
-			mOriginalCenter = Point3d(cx, cy, cz);
-			mCurrentCenter = Point3d(cx, cy, cz);
-			originalCenterSet = true;
-		}
+		//float maxDist = 0.0;
+		//float maxCX=0, maxCY=0, maxCZ=0, maxR=0;
+		//for (int i = 0; i < corners.size(); ++i)
+		//{
+		//	for (int k = i + 1; k < corners.size(); ++k)
+		//	{
+		//		Point3d dif = corners[k] - corners[i];
+		//		float dist = dif.mag();
+		//		if (dist > maxDist)
+		//		{
+		//			maxR = dist / 2;
+		//			Point3d sum = corners[k] + corners[i];
+		//			Point3d centerpoint = sum / 2;
+		//			//std::cout << "Point1 " << corners[k] << "Point2 " << corners[i] << "Center " << centerpoint;
+		//			maxCX = centerpoint.x();
+		//			maxCY = centerpoint.y();
+		//			maxCZ = centerpoint.z();
+		//		}
+		//	}
+		//}
+		//cx = maxCX;
+		//cy = maxCY;
+		//cz = maxCZ;
+		////pad the sphere a little bit for giggles
+		//r = maxR * 1.1;
+		////std::cout << "Skeleton bounding sphere " << std::endl;
+		////std::cout << "cx: " << cx << " cy: " << cy << " cz: " << cz << " r: " << r << std::endl;
+		//if (!originalCenterSet)
+		//{
+		//	mOriginalCenter = Point3d(cx, cy, cz);
+		//	mCurrentCenter = Point3d(cx, cy, cz);
+		//	originalCenterSet = true;
+		//}
 	}
 
 	void Skeleton::MoveCenterTo(Point3d targetCenter)
@@ -495,33 +463,6 @@ namespace Roots
 	{
 		MoveCenterTo(mOriginalCenter);
 	}
-
-	//Json::Value Skeleton::ToJson()
-	//{
-	//	Json::Value skelJson;
-	//	skelJson["Vertices"] = Json::Value(Json::ValueType::arrayValue);
-	//	skelJson["Vertices"].resize(mVerts.size());
-
-	//	for (int i = 0; i < mVerts.size(); ++i)
-	//	{
-	//		skelJson["Vertices"][i] = mVerts[i].ToJson();
-	//	}
-
-	//	skelJson["Edges"] = Json::Value(Json::ValueType::arrayValue);
-
-	//	for (int i = 0; i < mEdges.size(); ++i)
-	//	{
-	//		for (int j = 0; j < mEdges[i].size(); ++i)
-	//		{
-	//			SkeletonEdge *skelEdge = mEdges[i][j];
-	//			skelJson["Edges"].append(skelEdge->ToJson());
-	//		}
-	//	}
-
-	//	return skelJson;
-	//}
-
-
 
 
 
@@ -762,7 +703,6 @@ namespace Roots
 			}
 			else
 			{
-				//idk mang
 				//do nothing
 			}
 		}

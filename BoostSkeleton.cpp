@@ -22,11 +22,14 @@ namespace Roots
 		mMinX = 0, mMaxX = 0, mMinY = 0, mMaxY = 0, mMinZ = 0, mMaxZ = 0;
 		mBoundsFound = false;
 		mCenter = Point3d();
+		originalCenter = Point3d();
 		mRadius = 0;
+		glVertices = {};
+		faces = {};
 		clear();
 	}
 
-	int BSkeleton::loadFromLines(std::vector<std::string> lines, int startingLine, std::vector<GLfloat> &glVertices)
+	int BSkeleton::loadFromLines(std::vector<std::string> &lines, int startingLine)
 	{
 		Initialize();
 		mBoundsFound = false;
@@ -36,19 +39,19 @@ namespace Roots
 		line = lines[startingLine];
 
 		int result = startingLine;
-		if (!boost::iequals(line, beginSkeletonString))
+		if (boost::iequals(line, beginSkeletonString))
 		{
 			//std::cout << "The Skeleton file lacks the " << beginSkeletonString << "header.  Should attempt to load wenzhen style file" << std::endl;
-			result = loadWenzhenLines(lines, glVertices, startingLine);
+			result = loadWenzhenLines(lines, startingLine);
 		}
-		else if (!boost::iequals(line, beginPlyString))
+		else if (boost::iequals(line, beginPlyString))
 		{
-			result = loadDanPly(lines, glVertices, startingLine);
+			result = loadDanPly(lines, startingLine);
 		}
 		else
 		{
 			//std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
-			result = loadPlyStyleLines(lines, glVertices, startingLine);
+			result = loadPlyStyleLines(lines, startingLine);
 		}
 
 		/*for (skelEdgeIter sei = boost::edges(*this); sei.first != sei.second; ++sei)
@@ -83,7 +86,7 @@ namespace Roots
 		}
 	}
 
-	int BSkeleton::loadWenzhenLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine)
+	int BSkeleton::loadWenzhenLines(std::vector<std::string> &lines, int startingLine)
 	{
 		int lineOn = startingLine;
 		
@@ -111,7 +114,7 @@ namespace Roots
 		}
 		
 		loadVertices(lines, lineOn, numVertices);
-		loadEdges(lines, lineOn, numEdges, glVertices);
+		loadEdges(lines, lineOn, numEdges);
 		if (lineOn >= lines.size())
 		{
 			std::cout << "Line on greater than lines size" << std::endl;
@@ -119,16 +122,121 @@ namespace Roots
 		return lineOn;
 	}
 
-	int BSkeleton::loadDanPly(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine)
+	int BSkeleton::loadDanPly(std::vector<std::string> &lines, int startingLine)
 	{
 		int lineOn = startingLine;
 
 		int numEdges = 0, numVertices = 0, numFaces = 0;
+		std::vector<std::string> words = {};
 
+		bool headerEnded = false;
 
+		while (!headerEnded)
+		{
+			boost::split(words, lines[lineOn], boost::is_any_of(" "));
+			//vertices
+			if (boost::iequals(words[0], "element") && boost::iequals(words[1], "vertex"))
+			{
+				numVertices = boost::lexical_cast<int>(words[2]);
+				mVertexParseOrder = std::map<ParsingOrder, int>();
+				mVertexWriteOrder = std::map<int, ParsingOrder>();
+				++lineOn;
+				boost::split(words, lines[lineOn], boost::is_any_of(" "));
+				int propertyPos = 0;
+				while (boost::iequals(words[0], "property"))
+				{
+					boost::split(words, lines[lineOn], boost::is_any_of(" "));
+					
+					if (!boost::iequals(words[0], "property"))
+					{
+						break;
+					}
+					if (boost::iequals(words[2], "bt2"))
+					{
+						mVertexParseOrder[ParsingOrder::Thickness] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::Thickness;
+					}
+					else if (boost::iequals(words[2], "radius"))
+					{
+						mVertexParseOrder[ParsingOrder::Width] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::Width;
+					}
+					else if (boost::iequals(words[2], "x"))
+					{
+						mVertexParseOrder[ParsingOrder::X] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::X;
+					}
+					else if (boost::iequals(words[2], "y"))
+					{
+						mVertexParseOrder[ParsingOrder::Y] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::Y;
+					}
+					else if (boost::iequals(words[2], "z"))
+					{
+						mVertexParseOrder[ParsingOrder::Z] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::Z;
+					}
+
+					++lineOn;
+					++propertyPos;
+				}
+			}
+			if (boost::iequals(words[0], "element") && boost::iequals(words[1], "edge"))
+			{
+				numEdges = boost::lexical_cast<int>(words[2]);
+			}
+			if (boost::iequals(words[0], "element") && boost::iequals(words[1], "face"))
+			{
+				numFaces = boost::lexical_cast<int>(words[2]);
+			}
+			if (boost::iequals(words[0], "end_header"))
+			{
+				headerEnded = true;
+			}
+			++lineOn;
+		}
+		std::cout << "loading vertices " << std::endl;
+		loadVertices(lines, lineOn, numVertices);
+		std::cout << "loading edges " << std::endl;
+		loadEdges(lines, lineOn, numEdges);
+		std::cout << "loading faces " << std::endl;
+		loadFaces(lines, lineOn, numFaces);
+		std::cout << "Finished loading skeleton " << std::endl;
+		
+
+		return lineOn;
 	}
 
-	int BSkeleton::loadPlyStyleLines(std::vector<std::string> lines, std::vector<GLfloat> &glVertices, int startingLine)
+	void BSkeleton::writeDanPly(std::ostream &os)
+	{
+
+		skelVertIter svi = boost::vertices(*this);
+
+		for (; svi.first != svi.second; ++svi)
+		{
+			Point3d *v = &operator[](*svi.first);
+			for (int propertyPos = 0; propertyPos < ParsingOrder::ParsingCount; ++propertyPos)
+			{
+				os << v->operator[](mVertexWriteOrder[propertyPos]) << " ";
+			}
+			os << std::endl;
+		}
+
+		skelEdgeIter sei = boost::edges(*this);
+
+		for (; sei.first != sei.second; ++sei)
+		{
+			os << sei.first->m_source << " " << sei.first->m_target << std::endl;
+		}
+
+		for (int i = 0; i < faces.size(); ++i)
+		{
+			os << faces[i] << std::endl;
+		}
+		return;
+	}
+
+	int BSkeleton::loadPlyStyleLines(std::vector<std::string> &lines, int startingLine)
 	{
 		std::vector<std::vector<std::string>> headerInfo;
 		bool endHeaderReached = false;
@@ -166,7 +274,7 @@ namespace Roots
 			{
 				//handle edges
 				int numEdges = boost::lexical_cast<int>(headerWords[1]);
-				loadEdges(lines, lineOn, numEdges, glVertices);
+				loadEdges(lines, lineOn, numEdges);
 			}
 			else
 			{
@@ -178,36 +286,29 @@ namespace Roots
 		return lineOn;
 	}
 
-	void BSkeleton::loadVertices(std::vector<std::string> lines, int &lineOn, int numVertices)
+	void BSkeleton::loadVertices(std::vector<std::string> &lines, int &lineOn, int numVertices)
 	{
 		std::vector<std::string> words;
-		float vertData[3];
+		float vertData[5];
 		for (int i = 0; i < numVertices; ++i, ++lineOn)
 		{
 			words = {};
 			boost::split(words, lines[lineOn], boost::is_any_of(" "));
-			for (int axis = 0; axis < 3; ++axis)
+			for (int parsingOrder = 0; parsingOrder < ParsingOrder::ParsingCount; ++parsingOrder)
 			{
-				vertData[axis] = boost::lexical_cast<float>(words[axis]);
+				vertData[parsingOrder] = boost::lexical_cast<float>(words[mVertexParseOrder[(ParsingOrder)parsingOrder]]);
 			}
-			//std::cout << "Vertex " << words[0] << " " << words[1] << " " << words[2] << std::endl;
-			addVertex(Point3d(vertData));
-			if (words.size() > 3)
-			{
-				//std::cout << "This line looks to be not a point" << std::endl;
-				//std::cout << lines[lineOn] << std::endl;
-			}
+			addVertex(Point3d(vertData[0], vertData[1], vertData[2], vertData[3], vertData[4]));
 		}
-		//std::cout << "Loaded all vertices, ending on line " << lineOn << std::endl;
-		//std::cout << lines[lineOn] << std::endl;
+		updateGLVertices();
 	}
 
-	void BSkeleton::loadEdges(std::vector<std::string> lines, int &lineOn, int numEdges, std::vector<GLfloat> &glVertices)
+	void BSkeleton::loadEdges(std::vector<std::string> &lines, int &lineOn, int numEdges)
 	{
 		//std::cout << "Beginning to load edges" << std::endl;
 		//std::cout << "first line is : " << lines[lineOn] << std::endl;
 		int v0, v1;
-		float attributedata[NumAttributes];
+		//float attributedata[NumAttributes];
 		std::vector<std::string> words;
 		for (int i = 0; i < numEdges && lineOn < lines.size(); ++i, ++lineOn)
 		{
@@ -215,51 +316,52 @@ namespace Roots
 			boost::split(words, lines[lineOn], boost::is_any_of(" "));
 			v0 = boost::lexical_cast<int>(words[0]);
 			v1 = boost::lexical_cast<int>(words[1]);
-			for (int att = 0; att < NumAttributes; ++att)
-			{
-				attributedata[att] = boost::lexical_cast<float>(words[2 + att]);
-			}
-			if (words.size() < 2 + NumAttributes)
-			{
-				std::cout << "Edge: " << i << "at line: " << lineOn << " may be missing attribution" << std::endl;
-			}
-			//std::cout << "Edge between " << v0 << " " << v1 << std::endl;
-			Point3d p0 = Point3d(), p1 = Point3d();
+
 			if (m_vertices.size() > v1 && m_vertices.size() > v0)
 			{
-				SkelVert bv0 = boost::vertex(v0, *this);
-				SkelVert bv1 = boost::vertex(v1, *this);
-				p0 = operator[](bv0);
-				p1 = operator[](bv1);
-				addEdge(v0, v1, RootAttributes(attributedata, p0, p1), glVertices);
+				addEdge(v0, v1);
 			}
 
 		}
 	}
 
-	SkelEdge BSkeleton::addEdge(int v0, int v1, RootAttributes attributes, std::vector<GLfloat> &glVertices)
+	void BSkeleton::loadFaces(std::vector<std::string> &lines, int &lineOn, int numFaces)
+	{
+		faces.resize(numFaces);
+
+		std::vector<GLuint> faceVerts = {0, 0, 0};
+		std::vector<std::string> words;
+		int i = 0;
+		for (;i < numFaces && lineOn < lines.size(); ++i, ++lineOn)
+		{
+			words = {};
+			boost::split(words, lines[lineOn], boost::is_any_of(" "));
+			for (int v = 0; v < 3; ++v)
+			{
+				faceVerts[v] = (GLuint)boost::lexical_cast<int>(words[v + 1]);
+			}
+			faces.push_back(Face(faceVerts, &glVertices[0]));
+		}
+		if (i < numFaces)
+		{
+			std::cout << "Not all faces loaded?  " << std::endl << "First face " << faces[0] << std::endl;
+			std::cout << "Last face " << faces[i] << std::endl;
+		}
+	}
+
+	SkelEdge BSkeleton::addEdge(int v0, int v1)
 	{
 		SkelEdge e;
 		bool edgeAdded;
 		boost::tie(e, edgeAdded) = boost::add_edge(v0, v1, *this);
 		if (edgeAdded)
 		{
-			operator[](e) = attributes;
-			operator[](e).v0id = v0;
-			operator[](e).v1id = v1;
-			operator[](e).glV0 = glVertices.size() / 3;
-			for (int i = 0; i < 3; ++i)
-			{
-				glVertices.push_back(operator[](v0)[i]);
-			}
-			operator[](e).glV1 = glVertices.size() / 3;
-			for (int i = 0; i < 3; ++i)
-			{
-				glVertices.push_back(operator[](v1)[i]);
-			}
-
-			//this causes a compiler error for some reason
-			//boost::put(boost::edge_weight_t(), *this, e, attributes.euclidLength);
+			RootAttributes ra = RootAttributes();
+			ra.euclidLength = (operator[](v0) - operator[](v1)).mag();
+			ra.v0id = v0;
+			ra.v1id = v1;
+			operator[](e) = ra;
+			
 		}
 		return e;
 	}
@@ -268,9 +370,22 @@ namespace Roots
 		SkelVert v;
 		v = boost::add_vertex(*this);
 		operator[](v) = pointLocation;
-		operator[](v).id = m_vertices.size() - 1;
+		operator[](v).id = v;
 		mBoundsFound = false;
 		return v;
+	}
+
+	void BSkeleton::updateGLVertices()
+	{
+		glVertices.resize(m_vertices.size() * 3);
+
+		for (SkelVert i = 0; i < m_vertices.size(); ++i)
+		{
+			for (int dim = 0; dim < 3; ++dim)
+			{
+				glVertices[i * 3 + dim] = operator[](i)[dim];
+			}
+		}
 	}
 
 	void BSkeleton::findBounds()
@@ -309,8 +424,8 @@ namespace Roots
 	void BSkeleton::findBoundingSphere()
 	{
 		findBounds();
-		Point3d minPoint = Point3d(mMinX, mMinY, mMinZ);
-		Point3d maxPoint = Point3d(mMaxX, mMaxY, mMaxZ);
+		Point3d minPoint = Point3d(mMinX, mMinY, mMinZ, 0, 0);
+		Point3d maxPoint = Point3d(mMaxX, mMaxY, mMaxZ, 0, 0);
 
 		Point3d sum = Point3d();
 		skelVertIter vIter = boost::vertices(*this);
@@ -322,31 +437,35 @@ namespace Roots
 		sum = sum / m_vertices.size();
 		//Point3d sum = minPoint + maxPoint;
 		mCenter = sum;
-
+		originalCenter = mCenter;
 		mRadius = (maxPoint - mCenter).mag();
 	}
 
-	BSkeleton BSkeleton::recenterSkeleton(Point3d newCenter, std::vector<float> &vertices)
+	void BSkeleton::recenterSkeleton(Point3d newCenter)
 	{
 		findBoundingSphere();
 		Point3d offset = newCenter - mCenter;
+		mCenter = newCenter;
 
-		BSkeleton result = *this;
-		skelVertIter resIter = boost::vertices(result);
+		skelVertIter svi = boost::vertices(*this);
+		while (svi.first != svi.second)
+		{
+			operator[](*svi.first) += offset;
+			++svi;
+		}
+		updateGLVertices();
+		return;
 
-		while (resIter.first != resIter.second)
-		{
-			result[*resIter.first] += offset;
-			++resIter;
-		}
-		for (int i = 0; i < vertices.size() / 3; ++i)
-		{
-			for (int v = 0; v < 3; ++v)
-			{
-				vertices[i * 3 + v] += offset[v];
-			}
-		}
-		return result;
+		//BSkeleton result = *this;
+		//skelVertIter resIter = boost::vertices(result);
+
+		//while (resIter.first != resIter.second)
+		//{
+		//	result[*resIter.first] += offset;
+		//	++resIter;
+		//}
+		//result.updateGLVertices();
+		//return result;
 	}
 
 	SkelEdge BSkeleton::getEdge(int v0, int v1, bool &exists)
@@ -385,7 +504,7 @@ namespace Roots
 		while (vi.first != vi.second)
 		{
 			int deg = boost::degree(*vi.first, *this);
-			if (deg != 2)
+			if (deg != 2 && deg != 0)
 			{
 				result.push_back(*vi.first);
 			}
@@ -458,21 +577,21 @@ void PySkeleton::reload()
 	}
 	for (skelEdgeIter sei = boost::edges(*mSkeleton); sei.first != sei.second; ++sei)
 	{
-		Roots::RootAttributes rootAdded = mSkeleton->operator[](*sei.first);
-		minThickness = std::min(rootAdded.thickness, minThickness);
-		maxThickness = std::max(rootAdded.thickness, maxThickness);
-		thicknessList.push_back(rootAdded.thickness);
+		//Roots::RootAttributes rootAdded = mSkeleton->operator[](*sei.first);
+		//minThickness = std::min(rootAdded.thickness, minThickness);
+		//maxThickness = std::max(rootAdded.thickness, maxThickness);
+		//thicknessList.push_back(rootAdded.thickness);
 
-		minWidth = std::min(rootAdded.width, minWidth);
-		maxWidth = std::max(rootAdded.width, maxWidth);
-		widthList.push_back(rootAdded.width);
+		//minWidth = std::min(rootAdded.width, minWidth);
+		//maxWidth = std::max(rootAdded.width, maxWidth);
+		//widthList.push_back(rootAdded.width);
 
-		minRatio = std::min(rootAdded.thickness / rootAdded.width, minRatio);
-		maxRatio = std::max(rootAdded.thickness / rootAdded.width, maxRatio);
-		ratioList.push_back(rootAdded.thickness / rootAdded.width);
+		//minRatio = std::min(rootAdded.thickness / rootAdded.width, minRatio);
+		//maxRatio = std::max(rootAdded.thickness / rootAdded.width, maxRatio);
+		//ratioList.push_back(rootAdded.thickness / rootAdded.width);
 
 		//std::cout << "Root reloaded " << rootAdded << std::endl;
-		mEdgeList.append<Roots::RootAttributes>(rootAdded);
+		//mEdgeList.append<Roots::RootAttributes>(rootAdded);
 	}
 
 	std::sort(thicknessList.begin(), thicknessList.end());
