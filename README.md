@@ -1,7 +1,7 @@
 # PlantRoot
 
 ### Compile Instruction ###
-platform: Windows
+Platform: Windows
 #### Dependency ####
 1. Compile Boost_1_65_1
    
