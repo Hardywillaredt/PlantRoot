@@ -8,7 +8,6 @@
 //#endif // WITH_OPENCV
 
 
-
 namespace
 {
 	struct mvec
