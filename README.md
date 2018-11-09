@@ -13,11 +13,11 @@
 	2. Substitute library path to corresponding path in your computer
 
 #### Compile #### 
-navigate to project folder, enter command:
-'''ruby
-	- mkdir build
-	- cd build
-	- cmake -G "Visual Studio 15 2017 Win64" ..
+Navigate to project folder, enter command:
+'''
+mkdir build
+cd build
+cmake -G "Visual Studio 15 2017 Win64" ..
 '''
 
 Open sln file in vs2017
