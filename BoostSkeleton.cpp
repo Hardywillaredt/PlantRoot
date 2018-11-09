@@ -37,20 +37,23 @@ namespace Roots
 		std::string line;
 		int numEdges = 0, numVerts = 0;
 		line = lines[startingLine];
+		boost::trim(line);
 
 		int result = startingLine;
+		std::cout << "Skeleton file type: " << line << std::endl;
 		if (boost::iequals(line, beginSkeletonString))
 		{
-			//std::cout << "The Skeleton file lacks the " << beginSkeletonString << "header.  Should attempt to load wenzhen style file" << std::endl;
+			std::cout << "The Skeleton file lacks the " << beginSkeletonString << "header.  Should attempt to load wenzhen style file" << std::endl;
 			result = loadWenzhenLines(lines, startingLine);
 		}
 		else if (boost::iequals(line, beginPlyString))
 		{
+			//beginPlyString = "ply"
 			result = loadDanPly(lines, startingLine);
 		}
 		else
 		{
-			//std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
+			std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
 			result = loadPlyStyleLines(lines, startingLine);
 		}
 
@@ -88,6 +91,7 @@ namespace Roots
 
 	int BSkeleton::loadWenzhenLines(std::vector<std::string> &lines, int startingLine)
 	{
+		std::cout << "Load Wenzhen lines" << std::endl;
 		int lineOn = startingLine;
 		
 		int numEdges=0, numVertices=0, numFaces=0;
@@ -238,6 +242,7 @@ namespace Roots
 
 	int BSkeleton::loadPlyStyleLines(std::vector<std::string> &lines, int startingLine)
 	{
+		std::cout << "Load ply style lines" << std::endl;
 		std::vector<std::vector<std::string>> headerInfo;
 		bool endHeaderReached = false;
 		int lineOn = startingLine;
@@ -305,8 +310,8 @@ namespace Roots
 
 	void BSkeleton::loadEdges(std::vector<std::string> &lines, int &lineOn, int numEdges)
 	{
-		//std::cout << "Beginning to load edges" << std::endl;
-		//std::cout << "first line is : " << lines[lineOn] << std::endl;
+		std::cout << "Beginning to load edges " << std::endl;
+		std::cout << "first line is : " << lines[lineOn] << std::endl;
 		int v0, v1;
 		//float attributedata[NumAttributes];
 		std::vector<std::string> words;
@@ -321,8 +326,8 @@ namespace Roots
 			{
 				addEdge(v0, v1);
 			}
-
 		}
+		//std::cout << "Number of edges added " << i - 1 << std::endl;
 	}
 
 	void BSkeleton::loadFaces(std::vector<std::string> &lines, int &lineOn, int numFaces)

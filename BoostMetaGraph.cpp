@@ -1132,6 +1132,7 @@ namespace Roots
 		}
 
 		bool fileHasMetaInfo = checkHeaderForMetaInfo(lines);
+		std::cout << "file has Meta info? " << fileHasMetaInfo << std::endl;
 		if (fileHasMetaInfo)
 		{
 			result = loadGraphFromLines(lines, lastLine);
@@ -1488,7 +1489,7 @@ namespace Roots
 		{
 			edge = BMetaEdge(skelVerts, srcSkel);
 		}
-		std::cout << "created the edge " << std::endl;
+		//std::cout << "created the edge " << std::endl;
 		MetaE e;
 		bool success;
 		boost::tie(e, success) = boost::add_edge(v0, v1, *this);
@@ -1501,7 +1502,7 @@ namespace Roots
 		
 		if (success)
 		{
-			std::cout << "assigning the edge " << std::endl;
+			//std::cout << "assigning the edge " << std::endl;
 			operator[](e) = edge;
 		}
 
@@ -1511,7 +1512,7 @@ namespace Roots
 			findBridges();
 		}
 
-		std::cout << "returning the metaE" << std::endl;
+		//std::cout << "returning the metaE" << std::endl;
 		return e;
 	}
 
@@ -1751,6 +1752,7 @@ namespace Roots
 		std::cout << "Finding Connected Components " << std::endl;
 		//build the boost component map vector<int> mapping vertices to components
 		mComponentMap.resize(m_vertices.size(), 0);
+		std::cout << "m_vertices.size() " << m_vertices.size() <<std::endl;
 		size_t numVertices = boost::num_vertices(*this);
 
 		numComponents = boost::connected_components(*this, &mComponentMap[0]);
@@ -1758,6 +1760,7 @@ namespace Roots
 		{
 			numComponents = std::max(numComponents, mComponentMap[i] + 1);
 		}
+		std::cout << "number of components : " << numComponents << std::endl;
 		mComponentSizeMap = {};
 		mComponentSizeMap.resize(numComponents, 0);
 
@@ -1767,9 +1770,12 @@ namespace Roots
 		for (; mei.first != mei.second; ++mei)
 		{
 			MetaV node0 = mei.first->m_source;
+			//std::cout << "node : first - " << mei.first->m_source << " second - " << std::endl;
 			int component = mComponentMap[node0];
 			mComponentSizeMap[component] += operator[](*mei.first).mLength;
+			//std::cout << "mComponentSizeMap[" << component << "] = " << mComponentSizeMap[component] << std::endl;
 		}
+		std::cout << "component size map built" << std::endl;
 
 		//sort the components by their size (cumulative edge length)
 		std::vector<float> allSizes = {};
@@ -1784,12 +1790,18 @@ namespace Roots
 		int priority = 0;
 		for (int i = allSizes.size() -1 ; i >= 0; --i)
 		{
+			std::cout << "i = " << i << std::endl;
 			for (int component = 0; component < mComponentSizeMap.size(); ++component)
 			{
 				if (mComponentSizeMap[component] == allSizes[i])
 				{
 					componentPriorityMap[component] = priority;
+					std::cout << "component priority map of component " << component << " has priority " << priority << std::endl;
 					++priority;
+				}
+				if (priority == numComponents)
+				{
+					break;
 				}
 			}
 		}
@@ -1809,11 +1821,13 @@ namespace Roots
 
 
 		//remap the components of the nodes and edges locally
+		std::cout << "remap the components of the nodes and edges locally " << std::endl;
 		for (MetaV node = 0; node < m_vertices.size(); ++node)
 		{
 			operator[](node).connectedComponent = mComponentMap[node];
 			operator[](node).updateComponentColor();
 		}
+		std::cout << "component color updated " << std::endl;
 
 		mei = boost::edges(*this);
 		for (; mei.first != mei.second; ++mei)
@@ -1825,6 +1839,7 @@ namespace Roots
 		}
 		MinMaxStruct::minComponent = 0;
 		MinMaxStruct::maxComponent = numComponents - 1;
+		std::cout << "updated node component" << std::endl;
 
 		componentBounds = std::vector<BoundingBox>(numComponents, BoundingBox());
 
@@ -1832,6 +1847,7 @@ namespace Roots
 		for (; mvi.first != mvi.second; ++mvi)
 		{
 			BMetaNode *node = &operator[](*mvi.first);
+			std::cout << "node " << node->p << " component " << node->connectedComponent << std::endl;
 			componentBounds[node->connectedComponent].addPoint(node->p);
 		}
 		std::cout << "Components found" << std::endl;

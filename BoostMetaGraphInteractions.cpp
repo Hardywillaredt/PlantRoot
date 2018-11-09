@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <iostream>
 
-#ifdef WITH_OPENCV
-	#include "opencv2/opencv.hpp"
-	#include "opencv2/highgui.hpp"
-#endif // WITH_OPENCV
+//#ifdef WITH_OPENCV
+//	#include "opencv2/opencv.hpp"
+//	#include "opencv2/highgui.hpp"
+//#endif // WITH_OPENCV
 
 
 
@@ -664,31 +664,31 @@ namespace Roots
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-#ifdef WITH_OPENCV
-		unsigned char img[480000];
-		glReadPixels(mouseX - 200, mouseY - 200, 400, 400, GL_RGB, GL_UNSIGNED_BYTE, img);
-
-		cv::Mat clickMat = cv::Mat(400, 400, CV_8UC3);
-
-		uchar *clickptr = clickMat.ptr<uchar>();
-		uchar *imgptr;
-		for (int row = 0; row < 400; ++row)
-		{
-			clickptr = clickMat.ptr<uchar>(399 - row);
-			imgptr = img + 3 * 400 * row;
-			for (int col = 0; col < 400; ++col)
-			{
-				for (int c = 0; c < 3; ++c)
-				{
-					clickptr[col * 3 + c] = imgptr[col * 3 + c];
-				}
-			}
-		}
-
-		cv::namedWindow("clickArea", CV_WINDOW_NORMAL);
-		cv::imshow("clickArea", clickMat);
-		cv::waitKey();
-#endif // WITH_OPENCV
+//#ifdef WITH_OPENCV
+//		unsigned char img[480000];
+//		glReadPixels(mouseX - 200, mouseY - 200, 400, 400, GL_RGB, GL_UNSIGNED_BYTE, img);
+//
+//		cv::Mat clickMat = cv::Mat(400, 400, CV_8UC3);
+//
+//		uchar *clickptr = clickMat.ptr<uchar>();
+//		uchar *imgptr;
+//		for (int row = 0; row < 400; ++row)
+//		{
+//			clickptr = clickMat.ptr<uchar>(399 - row);
+//			imgptr = img + 3 * 400 * row;
+//			for (int col = 0; col < 400; ++col)
+//			{
+//				for (int c = 0; c < 3; ++c)
+//				{
+//					clickptr[col * 3 + c] = imgptr[col * 3 + c];
+//				}
+//			}
+//		}
+//
+//		cv::namedWindow("clickArea", CV_WINDOW_NORMAL);
+//		cv::imshow("clickArea", clickMat);
+//		cv::waitKey();
+//#endif // WITH_OPENCV
 
 		
 		unsigned char data[3];
