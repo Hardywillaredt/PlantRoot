@@ -1,18 +1,18 @@
 # PlantRoot
 
-Compile Instruction
+## Compile Instruction ##
 
-Dependency
+#### Dependency ####
 	1. Compile Boost_1_65_1
 	2. Download glfw-3.2.1 64bit version
 	3. Download glad
 	4. Install python3.5 64bit version
 
-Modify CMakeLists.txt
+#### Modify CMakeLists.txt #### 
 	1. Substitute include path to corresponding path in your computer
 	2. Substitute library path to corresponding path in your computer
 
-Compile 
+#### Compile #### 
 navigate to project folder, enter command:
 	mkdir build
 	cd build
