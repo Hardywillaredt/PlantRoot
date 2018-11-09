@@ -1,6 +1,6 @@
 # PlantRoot
 
-## Compile Instruction ##
+### Compile Instruction ###
 
 #### Dependency ####
 	1. Compile Boost_1_65_1
@@ -19,7 +19,6 @@
    cd build
    cmake -G "Visual Studio 15 2017 Win64" ..
    ```
-
 2. Open sln file in vs2017
 3. Right click 'RootsTool' select “Set as Startup Project”
 4. Select Build->Build Solution
