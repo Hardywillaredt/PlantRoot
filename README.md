@@ -34,3 +34,6 @@ It's not necessary to have exactly the same version as listed above. But we didn
      - Linker -> General -> Additional Library Directories
      - Linker -> Input -> Additional dependency
    - If there is error message relate to "conflict target machine", check Properities -> Configuration Properties -> Linker -> Advanced -> Target Machine. Make sure it's "MachineX64"
+
+#### Finaly ####
+A python extension "RootsTool.pyd" for root skeleton visualization.
