@@ -27,7 +27,7 @@ Platform: Windows
 2. Open .sln file by double click
 3. Right click 'RootsTool' select “Set as Startup Project”
 4. Select Build->Build Solution
-   - If it reports error message like "LINK : fatal error LNK1104: cannot open file ...", check dependency (not necessary if directories are correcyly defined in CMakeLists.txt) in Solution Explorer -> right click RootsTool -> properities
+   - If it reports error message like "LINK : fatal error LNK1104: cannot open file ...", check dependency (not necessary if directories are correcyly defined in CMakeLists.txt) in Solution Explorer -> right click RootsTool -> properities. You probabily need to manually add these directories
      - VC++ Directories -> Include Directories
      - VC++ Directories -> Library Directories
      - C/C++ -> General -> Additional Include directories
