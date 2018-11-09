@@ -19,6 +19,7 @@ navigate to project folder, enter command:
 	- cd build
 	- cmake -G "Visual Studio 15 2017 Win64" ..
 '''
+
 Open sln file in vs2017
 
 Right click 'RootsTool' select “Set as Startup Project”
