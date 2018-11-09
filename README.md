@@ -4,6 +4,10 @@
 
 #### Dependency ####
 	1. Compile Boost_1_65_1
+	   Only libboost_python lib is needed
+	   ```
+	   .\b2 --address-mode=64 --with-python
+	   ```
 	2. Download glfw-3.2.1 64bit version
 	3. Download glad
 	4. Install python3.5 64bit version
