@@ -837,7 +837,7 @@ namespace Roots
 		{
 			face = *iter;
 			center += skelFaces[face].center;
-
+			
 			for (int v = 0; v < 3; ++v)
 			{
 				vertices[i * 3 + v] = skelFaces[face].vertices[v];
