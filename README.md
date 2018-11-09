@@ -14,23 +14,22 @@
 
 #### Compile #### 
 Navigate to project folder, enter command:
-'''
+```
 mkdir build
 cd build
 cmake -G "Visual Studio 15 2017 Win64" ..
-'''
+```
 
 Open sln file in vs2017
 
 Right click 'RootsTool' select “Set as Startup Project”
 
 Select Build->Build Solution
-
-  If it reports error message like "LINK : fatal error LNK1104: cannot open file ...", check dependency (not necessary if directories are correcyly defined in CMakeLists.txt): 
+- If it reports error message like "LINK : fatal error LNK1104: cannot open file ...", check dependency (not necessary if directories are correcyly defined in CMakeLists.txt): 
   Solution Explorer -> right click RootsTool -> properities
-    	VC++ Directories -> Include Directories
-      VC++ Directories -> Library Directories
-      C/C++ -> General -> Additional Include directories
-      Linker -> General -> Additional Library Directories
-	    Linker -> Input -> Additional dependency
+  - VC++ Directories -> Include Directories
+  - VC++ Directories -> Library Directories
+  - C/C++ -> General -> Additional Include directories
+  - Linker -> General -> Additional Library Directories
+  - Linker -> Input -> Additional dependency
 
