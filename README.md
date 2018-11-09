@@ -4,7 +4,8 @@
 
 #### Dependency ####
 1. Compile Boost_1_65_1
-   Only libboost_python lib is needed
+   
+   libboost_python lib is needed
    ```
    .\b2 --address-mode=64 --with-python
    ```
