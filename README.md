@@ -1,5 +1,12 @@
 # PlantRoot
-
+### Data Structure ###
+1. Lower level
+   - node
+   - edge
+2. Higher level - visible in GUI
+   - metaNode - consist of a set of nodes
+   - metaEdge - consist of a set of edges
+   
 ### Compile Instruction ###
 Environment: Windows, Python 3.5 64bit, Visual Studio 2017
 #### Dependency ####
