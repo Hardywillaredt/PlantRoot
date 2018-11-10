@@ -24,6 +24,7 @@ It's not necessary to have exactly the same version as listed above. But we didn
 #### Modify CMakeLists.txt #### 
 1. Substitute include path to corresponding path in your computer
 2. Substitute library path to corresponding path in your computer
+3. Set output directory
 
 #### Compile #### 
 1. Navigate to project folder, enter command:
