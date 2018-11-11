@@ -1,11 +1,12 @@
 # PlantRoot
 ### Data Structure ###
 1. Lower level
-   - node
-   - edge
+   - node - defined by 3D location (x,y,z)
+   - edge - defined by 2 nodes
 2. Higher level - visible in GUI
-   - metaNode - consist of a set of nodes
-   - metaEdge - consist of a set of edges
+   - metaNode - the intersection of three or more edges
+   - metaEdge - consist of a set of edges between two metaNode
+   - metaFace
 
 (TBC)   
 ### Compile Instruction ###
