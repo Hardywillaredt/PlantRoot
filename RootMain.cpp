@@ -1,4 +1,4 @@
-#include "Skeleton.h"
+// #include "Skeleton.h"
 #include "PythonModule.h"
 #include "BoostMetaGraph.h"
 
@@ -111,8 +111,13 @@ int main(int argc, char **argv)
 				mgraph.SplitOperation();
 			}
 		}
-		
-		
+
+		mei = boost::edges(mgraph);
+		MetaE e = *mei.first;
+		mgraph.removeComponentEdge = e;
+		mgraph.removeComponentEdgeValid = true;
+		mgraph.RemoveComponentOperation();
+
 		//mgraph.breakEdge = std::pair<MetaV, MetaV>(e.m_source, e.m_target);
 		//mgraph.breakEdgeValid = true;
 		//mgraph.BreakOperation();

@@ -8,6 +8,7 @@
 //#endif // WITH_OPENCV
 
 
+
 namespace
 {
 	struct mvec
@@ -407,7 +408,7 @@ namespace Roots
 		}
 		if (selectNode1Valid)
 		{
-			std::cout << "component 1 " << component1 << std::endl;
+			std::cout << "component1 " << component1 << std::endl;
 			std::cout << "vert 1 " << selectVert1 << std::endl;
 			if (vertNodeMap.count(selectNode1) == 0)
 			{
@@ -485,9 +486,9 @@ namespace Roots
 
 	void BMetaGraph::selectSplitEdge(int mouseX, int mouseY)
 	{
-		MetaE edge;
 		bool isValid = false;
-		edge = selectEdgeByRender(mouseX, mouseY, isValid);
+		MetaE edge = selectEdgeByRender(mouseX, mouseY, isValid);
+
 		if (!isValid)
 		{
 			return;
@@ -576,7 +577,63 @@ namespace Roots
 
 	}
 
+	void BMetaGraph::selectRemoveComponentEdge(int mouseX, int mouseY)
+	{
+		bool isValid = false;
 
+		MetaE edge = selectEdgeByRender(mouseX, mouseY, isValid);
+
+		//if we have a valid selection do stuff
+		if (isValid)
+		{
+			//if there is an existing selected edge we want to unselect it
+			if (removeComponentEdgeValid)
+			{
+				if (edge == removeComponentEdge)
+				{
+					std::cout << "RemoveComponentEdge == edge -> unselect remove component edge" << std::endl;
+					unselectEdge(edge);
+					removeComponentEdgeValid = false;
+					std::cout << "Finished assignment " << std::endl;
+				}
+				//elsewise, unselect that break edge and replace it with this one
+				else
+				{
+					std::cout << "RemoveComponentEdge != edge -> unselect removal edge and assign as edge" << std::endl;
+					unselectEdge(removeComponentEdge);
+					selectEdge(edge);
+					removeComponentEdge = edge;
+					removeComponentEdgeValid = true;
+					std::cout << "Finished assignment " << std::endl;
+				}
+			}
+			//if there is existing break edge, we set the break edge valid to true and select the edge
+			else
+			{
+				std::cout << "No existing remove component edge -> assigning this edge as the break edge " << std::endl;
+				removeComponentEdgeValid = true;
+				removeComponentEdge = edge;
+				selectEdge(edge);
+				std::cout << "Finished assignment " << std::endl;
+			}
+		}
+		if (removeComponentEdgeValid)
+		{
+			MetaE e;
+			bool exists;
+			e = removeComponentEdge;
+
+			std::cout << "...Edge parameters..." << std::endl;
+			std::cout << "Component : " << operator[](e).connectedComponent << std::endl;
+			std::cout << "Thickness : " << operator[](e).averageThickness << std::endl;
+			std::cout << "Width : " << operator[](e).averageWidth << std::endl;
+			std::cout << "IsBridge : " << std::to_string(operator[](e).isBridge) << std::endl;
+			std::cout << "v0 " << vertNodeMap[operator[](e).start()] << std::endl;
+			std::cout << "v1 " << vertNodeMap[operator[](e).end()] << std::endl;
+			std::cout << "edgeId " << operator[](e).instanceId << std::endl;
+			std::cout << "....................." << std::endl;
+		}
+	}
 
 	MetaV BMetaGraph::getFirstMetaNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid)
 	{
@@ -962,7 +1019,11 @@ namespace Roots
 			}
 		}
 		splitEdgeValid = false;
-		
+		if (removeComponentEdgeValid)
+		{
+			unselectEdge(removeComponentEdge);
+		}
+		removeComponentEdgeValid = false;
 	}
 
 	void BMetaGraph::unselectAllEdges()

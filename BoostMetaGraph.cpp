@@ -837,7 +837,7 @@ namespace Roots
 		{
 			face = *iter;
 			center += skelFaces[face].center;
-			
+
 			for (int v = 0; v < 3; ++v)
 			{
 				vertices[i * 3 + v] = skelFaces[face].vertices[v];
@@ -1040,6 +1040,8 @@ namespace Roots
 
 		splitEdgeValid = false;
 		splitNeighbors = {};
+
+		removeComponentEdgeValid = false;
 
 		clear();
 		arcball_reset();
@@ -1749,7 +1751,7 @@ namespace Roots
 
 	void BMetaGraph::findAndLabelConnectedComponents()
 	{
-		std::cout << "Finding Connected Components " << std::endl;
+		std::cout << "===== Finding Connected Components =====" << std::endl;
 		//build the boost component map vector<int> mapping vertices to components
 		mComponentMap.resize(m_vertices.size(), 0);
 		std::cout << "m_vertices.size() " << m_vertices.size() <<std::endl;
@@ -1796,7 +1798,7 @@ namespace Roots
 				if (mComponentSizeMap[component] == allSizes[i])
 				{
 					componentPriorityMap[component] = priority;
-					std::cout << "component priority map of component " << component << " has priority " << priority << std::endl;
+					std::cout << "component priority map : component " << component << " has priority " << priority << std::endl;
 					++priority;
 				}
 				if (priority == numComponents)
@@ -1847,10 +1849,10 @@ namespace Roots
 		for (; mvi.first != mvi.second; ++mvi)
 		{
 			BMetaNode *node = &operator[](*mvi.first);
-			std::cout << "node " << node->p << " component " << node->connectedComponent << std::endl;
+			// std::cout << "node " << node->p << " component " << node->connectedComponent << std::endl;
 			componentBounds[node->connectedComponent].addPoint(node->p);
 		}
-		std::cout << "Components found" << std::endl;
+		std::cout << "===== Components found =====" << std::endl;
 	}
 
 	boost::python::list BMetaGraph::getComponentSizes()
@@ -2226,6 +2228,104 @@ namespace Roots
 		return;
 	}
 
+	void BMetaGraph::RemoveComponentOperation()
+	{
+		std::cout << "Remove Component Mode " << std::endl;
+		if (!removeComponentEdgeValid)
+		{
+			return;
+		}
+
+		MetaV removeComponentNode = removeComponentEdge.m_source;
+		int removeComponent = mComponentMap[removeComponentNode];
+		std::cout << "remove component ID " << removeComponent << std::endl;
+		int nodeComponent;
+
+		unselectEdge(removeComponentEdge);
+		removeComponentEdgeValid = false;
+
+		metaEdgeIter mei = boost::edges(*this);
+		std::list<MetaE> removeEdgeList;
+		MetaE removeComponentEdgeE;
+		bool exists = false;
+		for (; mei.first != mei.second; ++mei)
+		{
+			if (operator[](*mei.first).connectedComponent == removeComponent)
+			{
+				MetaV node0 = std::min(mei.first->m_source, mei.first->m_target);
+				MetaV node1 = std::max(mei.first->m_source, mei.first->m_target);
+				boost::tie(removeComponentEdgeE, exists) = boost::edge(node0, node1, *this);
+
+				if (!exists)
+				{
+					std::cout << "Remove component edge doesnt exist " << std::endl;
+					//return;
+					continue;
+				}
+				std::cout << "remove edge " << removeComponentEdgeE << std::endl; // (98,458)
+				//removeEdge(removeComponentEdgeE);
+				removeEdgeList.push_back(removeComponentEdgeE);
+				//std::cout << "done " << std::endl;
+			}
+			// std::cout << i << std::endl;
+		}
+		while(!removeEdgeList.empty())
+		{
+			removeComponentEdgeE = removeEdgeList.back();
+			removeEdgeList.pop_back();
+			removeEdge(removeComponentEdgeE);
+		}
+		
+		//metaVertIter mvi = boost::vertices(*this);
+		int test = 0;
+		int count = 0;
+		std::cout << "m_vertices.size() " << m_vertices.size() << std::endl;
+		// for (; mvi.first != mvi.second; ++mvi)
+		for (MetaV node = 0; node < m_vertices.size(); ++node)
+		{
+			//int nodeComponent = operator[](*mvi.first).connectedComponent;
+			nodeComponent = operator[](node).connectedComponent;
+			
+			// MetaV  node = *mvi.first;
+			// std::cout << "i " << test++ << std::endl;
+			// std::cout << "node " << node << std::endl;
+			if (nodeComponent == removeComponent)
+			{
+				std::cout << "remove " << node << std::endl; 
+				removeNode(node);
+				node--;
+				count++;
+			}
+		}
+		std::cout << count << " vertices will be removed " << std::endl;
+		/*for (it = removeNodeList.begin(); it != removeNodeList.end(); ++it)
+		{
+			removeNode(*it);
+		}*/
+		std::cout << "m_vertices.size() " << m_vertices.size() << std::endl;
+		
+
+		/*std::vector<MetaV> orderedNodes = { node0, node1 };
+		std::sort(orderedNodes.begin(), orderedNodes.end());
+
+		for (int i = orderedNodes.size() - 1; i >= 0; --i)
+		{
+			if (boost::degree(orderedNodes[i], *this) == 0)
+			{
+				removeNode(orderedNodes[i]);
+			}
+			else
+			{
+				BridgeNode(orderedNodes[i]);
+			}
+		}*/
+		//updateVertNodeMap();
+		findAndLabelConnectedComponents();
+		buildEdgeVBOs();
+		std::cout << "Remove component operation completed" << std::endl;
+		return;
+
+	}
 
 	void BMetaGraph::PromoteOperation(SkelVert toPromote)
 	{
