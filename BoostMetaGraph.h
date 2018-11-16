@@ -285,7 +285,8 @@ namespace Roots{
 		bool splitEdgeValid;
 		std::vector<MetaE> splitNeighbors;
 
-
+		MetaE removeComponentEdge;
+		bool removeComponentEdgeValid;
 		
 
 		int getNumGLEdges();
@@ -350,6 +351,7 @@ namespace Roots{
 		void selectConnectionNode(int mouseX, int mouseY);
 		void selectBreakEdge(int mouseX, int mouseY);
 		void selectSplitEdge(int mouseX, int mouseY);
+		void selectRemoveComponentEdge(int mouseX, int mouseY);
 
 		void setSelectionColor(float r, float g, float b);
 		void unselectAll();
@@ -541,6 +543,10 @@ namespace Roots{
 		void SplitOperation();
 		//void SplitOperation(MetaEdge3d toSplit, std::vector<MetaEdge3d> connectedEdgeSet);
 
+		/*
+		Select one edge, then remove entire component
+		*/
+		void RemoveComponentOperation();
 
 		void PromoteOperation(SkelVert toPromote);
 	
