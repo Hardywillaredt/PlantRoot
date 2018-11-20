@@ -8,7 +8,7 @@
    - metaEdge - consist of a set of edges between two metaNode
    - metaFace
 
-(TBC)   
+(TBC  
 ### Compile Instruction ###
 Environment: Windows, Python 3.5 64bit, Visual Studio 2017
 #### Dependency ####
