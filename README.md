@@ -1,5 +1,11 @@
 # PlantRoot
-### Data Structure ###
+Aim: Discover biologically significant traits form CT scan of plant root.
+
+How? 
+1. Using [persistent homology](https://www.cse.wustl.edu/~taoju/research/homology_CCCG.pdf) to deal with topological noise.
+2. Build graph structure for skeleton.
+3. Build root heirarchy to understand biologically meaningful traits.
+### Skeleton Data Structure ###
 1. Lower level
    - node - defined by 3D location (x,y,z)
    - edge - defined by 2 nodes
