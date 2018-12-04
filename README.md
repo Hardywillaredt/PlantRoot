@@ -14,7 +14,7 @@ Environment: Windows, Python 3.5 64bit, Visual Studio 2017
 #### Dependency ####
 1. Compile Boost_1_65_1
    
-   "libboost_python" library is needed. 
+   "libboost_python..." library is needed. 
    ```
    .\b2 --address-mode=64 --with-python
    ```
