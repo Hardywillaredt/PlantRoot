@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 
+
 //#ifdef WITH_OPENCV
 //	#include "opencv2/opencv.hpp"
 //	#include "opencv2/highgui.hpp"
@@ -312,7 +313,7 @@ namespace Roots
 			{
 				if (nodeVert == selectVert1)
 				{
-					std::cout << "Selecting node1 again" << std::endl;
+					std::cout << "Selecting node1 again, cancel node1. " << std::endl;
 					if (selectNode2Valid)
 					{
 						selectNode1Valid = selectNode2Valid;
@@ -482,8 +483,7 @@ namespace Roots
 			std::cout << "....................." << std::endl;
 		}
 	}
-
-
+	
 	void BMetaGraph::selectSplitEdge(int mouseX, int mouseY)
 	{
 		bool isValid = false;
@@ -635,6 +635,600 @@ namespace Roots
 		}
 	}
 
+	void BMetaGraph::selectStemStartEnd(int mouseX, int mouseY)
+	{
+		std::cout << "select stem node " << std::endl;
+		MetaV node;
+		bool isValid = false;
+
+		node = selectNodeByRender(mouseX, mouseY, isValid);
+
+		if (isValid)
+		{
+			privateSelectStemStartEnd(operator[](node).mSrcVert, operator[](node).connectedComponent);
+		}
+		else
+		{
+			SkelVert vert;
+			isValid = false;
+			vert = selectVertByRender(mouseX, mouseY, isValid);
+			if (isValid)
+			{
+				metaEdgeIter mei = boost::edges(*this);
+				int connectedComponent = -1;
+				for (; mei.first != mei.second; ++mei)
+				{
+					BMetaEdge *edge = &operator[](*mei.first);
+					for (SkelVert v : edge->mVertices)
+					{
+						if (vert == v)
+						{
+							connectedComponent = edge->connectedComponent;
+							break;
+						}
+					}
+					if (connectedComponent != -1)
+					{
+						break;
+					}
+				}
+
+				privateSelectStemStartEnd(vert, connectedComponent);
+			}
+		}
+	}
+
+	void BMetaGraph::privateSelectStemStartEnd(SkelVert nodeVert, int selectComponent)
+	{
+		int component1 = -1, component2 = -1;
+		SkelVert selectVert1 = 99999, selectVert2 = 999999;
+		if (selectStemStartValid)
+		{
+			component1 = operator[](selectStemStart).connectedComponent;
+			selectVert1 = operator[](selectStemStart).mSrcVert;
+			if (boost::degree(selectStemStart, *this) == 0)
+			{
+				removeNode(selectStemStart);
+				selectStemStart = 99999;
+			}
+		}
+		if (selectStemEndValid)
+		{
+			component2 = operator[](selectStemEnd).connectedComponent;
+			selectVert2 = operator[](selectStemEnd).mSrcVert;
+			if (boost::degree(selectStemEnd, *this) == 0)
+			{
+				removeNode(selectStemEnd);
+				selectStemEnd = 99999;
+			}
+		}
+		std::cout << "private select stem node " << std::endl;
+		for (int i = 0; i < 1; ++i)
+		{
+			if (selectStemStartValid)
+			{
+				if (nodeVert == selectVert1)
+				{
+					std::cout << "Selecting node1 again" << std::endl;
+					if (selectStemEndValid)
+					{
+						selectStemStartValid = selectStemEndValid;
+						selectStemStart = selectStemEnd;
+						component1 = component2;
+						selectVert1 = selectVert2;
+						selectStemEndValid = false;
+						break;
+					}
+					else
+					{
+						std::cout << "No node 2 " << std::endl;
+						selectStemStartValid = false;
+						break;
+					}
+				}
+				else if (selectComponent != component1)
+				{
+					std::cout << "Selecting on different component " << std::endl;
+					selectStemStartValid = true;
+					component1 = selectComponent;
+					selectVert1 = nodeVert;
+					selectStemEndValid = false;
+					if (vertNodeMap.count(nodeVert) > 0)
+					{
+						selectStemStart = vertNodeMap[nodeVert];
+					}
+					else
+					{
+						selectStemStart = 999999;
+					}
+					break;
+				}
+				else
+				{
+					if (selectStemEndValid)
+					{
+						if (nodeVert == selectVert2)
+						{
+							std::cout << "selecting node2 again" << std::endl;
+							selectStemEndValid = false;
+							break;
+						}
+					}
+					std::cout << "Selecting new node1, pushing node1 onto node 2" << std::endl;
+					selectStemEndValid = selectStemStartValid;
+					selectStemEnd = selectStemStart;
+					selectVert2 = selectVert1;
+					component2 = component1;
+					selectStemStartValid = true;
+					component1 = selectComponent;
+					selectVert1 = nodeVert;
+					if (vertNodeMap.count(nodeVert) > 0)
+					{
+						selectStemStart = vertNodeMap[nodeVert];
+					}
+					else
+					{
+						selectStemStart = 999999;
+					}
+					break;
+				}
+			}
+			else
+			{
+				std::cout << "selecting new node 1 " << std::endl;
+				selectStemStartValid = true;
+				component1 = selectComponent;
+				selectVert1 = nodeVert;
+				if (vertNodeMap.count(nodeVert) > 0)
+				{
+					selectStemStart = vertNodeMap[nodeVert];
+				}
+				else
+				{
+					selectStemStart = 999999;
+				}
+				break;
+			}
+		}
+
+		if (selectStemEndValid)
+		{
+			std::cout << "component2 " << component2 << std::endl;
+			std::cout << "vert 2 " << selectVert2 << std::endl;
+			if (vertNodeMap.count(selectStemEnd) == 0)
+			{
+				std::cout << "Creating node end " << std::endl;
+				selectStemEnd = addNode(selectVert2, &mSkeleton);
+				operator[](selectStemEnd).connectedComponent = component2;
+				operator[](selectStemEnd).updateColors(nodeOptions);
+			}
+			std::cout << "Node 2 " << selectStemEnd << std::endl;
+		}
+		if (selectStemStartValid)
+		{
+			std::cout << "component1 " << component1 << std::endl;
+			std::cout << "vert 1 " << selectVert1 << std::endl;
+			if (vertNodeMap.count(selectStemStart) == 0)
+			{
+				std::cout << "Creating node 1" << std::endl;
+				selectStemStart = addNode(selectVert1, &mSkeleton);
+				operator[](selectStemStart).connectedComponent = component1;
+				operator[](selectStemStart).updateColors(nodeOptions);
+			}
+			std::cout << "Node 1 " << selectStemStart << std::endl;
+		}
+
+		std::cout << "Leaving private selection " << std::endl;
+	}
+
+	void BMetaGraph::selectStemPrimaryNode(int mouseX, int mouseY)
+	{
+		if (!stemSelected)
+		{
+			std::cout << "no stem selected " << std::endl;
+			return;
+		}
+
+		std::cout << "selectStemPrimaryNode " << std::endl;
+
+		bool isValid = false;
+		
+		MetaV node = selectNodeByRender(mouseX, mouseY, isValid);
+
+		if (isValid)
+		{
+			int ite = 0;
+			for (MetaE temp : StemPath)
+			{
+				// selected node is on the stem
+				if ((node == temp.m_source) || (node == temp.m_target))
+				{
+					break;
+				}
+				ite++;
+				if (ite == StemPath.size())
+				{
+					return;
+				}
+			}
+			if (selectPrimaryNodesValid)
+			{
+				//if there is an existing selected node we want to unselect it
+				auto it = std::find_if(PrimaryNodes.begin(), PrimaryNodes.end(), 
+					[&node](const std::pair<int, MetaV>& element) { return element.second == node; });
+				if (it != PrimaryNodes.end())
+				//if (std::find(PrimaryNodes.begin(), PrimaryNodes.end(), node) != PrimaryNodes.end())
+				{
+					std::cout << "unselect node" << std::endl;
+					PrimaryNodes.erase(std::remove_if(PrimaryNodes.begin(), PrimaryNodes.end(), 
+						[&node](const std::pair<int, MetaV>& element) { return element.second == node; }), PrimaryNodes.end());
+					if (PrimaryNodes.empty())
+					{
+						selectPrimaryNodesValid = false;
+					}
+				}
+				//elsewise, add new node
+				else
+				{
+					std::cout << "add new node" << std::endl;
+					auto pos = std::find(StemPath_node.begin(), StemPath_node.end(), node);
+					if (pos != StemPath_node.end())
+					{
+						auto index = std::distance(StemPath_node.begin(), pos);
+						PrimaryNodes.push_back(std::make_pair(index, node));
+						selectPrimaryNodesValid = true;
+					}
+				}
+			}
+			else
+			{
+				std::cout << "No existing node" << std::endl;
+				auto pos = std::find(StemPath_node.begin(), StemPath_node.end(), node);
+				if (pos != StemPath_node.end())
+				{
+					auto index = std::distance(StemPath_node.begin(), pos);
+					PrimaryNodes.push_back(std::make_pair(index, node));
+					selectPrimaryNodesValid = true;
+				}
+			}
+		}
+
+		if (selectPrimaryNodesValid)
+		{
+			for (const std::pair<int, MetaV> &it : PrimaryNodes)
+			{
+				SkelVert selectVert = operator[](it.second).mSrcVert;
+				std::cout << "vert PrimaryNodes " << it.second << std::endl;
+				if (vertNodeMap.count(selectVert) == 0)
+				{
+					std::cout << "Creating node 1" << std::endl;
+					MetaV node = addNode(selectVert, &mSkeleton);
+					operator[](node).updateColors(nodeOptions);
+				}
+				std::cout << "Node 1+ " << it.second << std::endl;
+				std::cout << "Node 1- " << node << std::endl;
+			}
+		}
+		
+	}
+
+	void BMetaGraph::selectPrimaryBranches(int mouseX, int mouseY)
+	{
+		bool isValid = false;
+
+		MetaV target = selectNodeByRender(mouseX, mouseY, isValid);
+		MetaV v;
+		//if we have a valid selection do stuff
+		if (isValid)
+		{
+			MetaV source = PrimaryNodes[CurrentPrimaryNode].second;
+			if (PrimaryBranchSelectionValid)
+			{
+				if (PrimaryBranchSelection == target)
+				{
+					//cancel selection
+					v = target;
+					for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+					{
+						std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+						//shourtestPath.push_back(edge_pair.first);
+						unhighLightEdge(edge_pair.first);
+					}
+					PrimaryBranchSelectionValid = false;
+				}
+				else
+				{
+					//assign new selection
+					v = PrimaryBranchSelection;
+					for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+					{
+						std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+						//shourtestPath.push_back(edge_pair.first);
+						unhighLightEdge(edge_pair.first);
+					}
+					v = target;
+					for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+					{
+						std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+						//shourtestPath.push_back(edge_pair.first);
+						highLightEdge(edge_pair.first);
+					}
+					PrimaryBranchSelection = target;
+					PrimaryBranchSelectionValid = true;
+				}
+			}
+			else
+			{
+				v = target;
+				std::cout << "test 1 " << std::endl;
+				for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+				{
+					std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+					//shourtestPath.push_back(edge_pair.first);
+					highLightEdge(edge_pair.first);
+				}
+				PrimaryBranchSelection = target;
+				PrimaryBranchSelectionValid = true;
+			}
+		}
+		/*
+		if (isValid)
+		{
+			if (!PrimaryBranchesNode.empty())
+			{
+				//if there is an existing selected node we want to unselect it
+				if (std::find(PrimaryBranchesNode.begin(), PrimaryBranchesNode.end(), node) != PrimaryBranchesNode.end())
+				{
+					std::cout << "unselect node" << std::endl;
+					PrimaryBranchesNode.erase(std::remove(PrimaryBranchesNode.begin(), PrimaryBranchesNode.end(), node), PrimaryBranchesNode.end());
+					//unselectEdge(edge);
+				}
+				//elsewise, add new edge
+				else
+				{
+					std::cout << "add new node" << std::endl;
+					PrimaryBranchesNode.push_back(node);
+					//selectEdge(edge);
+					isNewEdgeAdded = true;
+				}
+			}
+			else
+			{
+				std::cout << "No existing node" << std::endl;
+				PrimaryBranchesNode.push_back(node);
+				//selectEdge(edge);
+				isNewEdgeAdded = true;
+			}
+		}*/
+		if (PrimaryBranchSelectionValid)
+		{
+			MetaV node = target;
+			SkelVert selectVert = operator[](node).mSrcVert;
+			std::cout << "Primary Branch end node " << node << std::endl;
+			if (vertNodeMap.count(PrimaryBranchSelection) == 0)
+			{
+				std::cout << "Creating node 1" << std::endl;
+				node = addNode(PrimaryBranchSelection, &mSkeleton);
+				std::cout << "test node " << std::endl;
+				operator[](node).updateColors(nodeOptions, false);
+				std::cout << "test update " << std::endl;
+			}
+			std::cout << "Node 1- " << node << std::endl;
+		}
+
+	}
+
+	void BMetaGraph::selectSegmentPointAction(int mouseX, int mouseY)
+	{
+		std::cout << "select segment edge point " << std::endl;
+		MetaV node;
+		bool isValid = false;
+
+		node = selectNodeByRender(mouseX, mouseY, isValid);
+
+		if (isValid)
+		{
+			privateSelectSegmentPointAction(operator[](node).mSrcVert, operator[](node).connectedComponent);
+		}
+		else
+		{
+			SkelVert vert;
+			isValid = false;
+			vert = selectVertByRender(mouseX, mouseY, isValid);
+			if (isValid)
+			{
+				metaEdgeIter mei = boost::edges(*this);
+				int connectedComponent = -1;
+				for (; mei.first != mei.second; ++mei)
+				{
+					BMetaEdge *edge = &operator[](*mei.first);
+					for (SkelVert v : edge->mVertices)
+					{
+						if (vert == v)
+						{
+							connectedComponent = edge->connectedComponent;
+							break;
+						}
+					}
+					if (connectedComponent != -1)
+					{
+						break;
+					}
+				}
+				privateSelectSegmentPointAction(vert, connectedComponent);
+			}
+		}
+	}
+
+	void BMetaGraph::privateSelectSegmentPointAction(SkelVert nodeVert, int selectComponent)
+	{
+		int component1 = -1, component2 = -1;
+		SkelVert selectVert1 = 99999, selectVert2 = 999999;
+		if (selectSegmentPoint1Valid)
+		{
+			component1 = operator[](selectSegmentPoint1).connectedComponent;
+			selectVert1 = operator[](selectSegmentPoint1).mSrcVert;
+			if (boost::degree(selectSegmentPoint1, *this) == 0)
+			{
+				removeNode(selectSegmentPoint1);
+				selectSegmentPoint1 = 99999;
+			}
+		}
+		if (selectSegmentPoint2Valid)
+		{
+			component2 = operator[](selectSegmentPoint2).connectedComponent;
+			selectVert2 = operator[](selectSegmentPoint2).mSrcVert;
+			if (boost::degree(selectSegmentPoint2, *this) == 0)
+			{
+				removeNode(selectSegmentPoint2);
+				selectSegmentPoint2 = 99999;
+			}
+		}
+		std::cout << "private select stem node " << std::endl;
+		for (int i = 0; i < 1; ++i)
+		{
+			if (selectSegmentPoint1Valid)
+			{
+				if (nodeVert == selectVert1)
+				{
+					std::cout << "Selecting node1 again" << std::endl;
+					if (selectSegmentPoint2Valid)
+					{
+						selectSegmentPoint1Valid = selectSegmentPoint2Valid;
+						selectSegmentPoint1 = selectSegmentPoint2;
+						component1 = component2;
+						selectVert1 = selectVert2;
+						selectSegmentPoint2Valid = false;
+						break;
+					}
+					else
+					{
+						std::cout << "No node 2 " << std::endl;
+						selectSegmentPoint1Valid = false;
+						break;
+					}
+				}
+				else if (selectComponent != component1)
+				{
+					std::cout << "Selecting on different component " << std::endl;
+					selectSegmentPoint1Valid = true;
+					component1 = selectComponent;
+					selectVert1 = nodeVert;
+					selectSegmentPoint2Valid = false;
+					if (vertNodeMap.count(nodeVert) > 0)
+					{
+						selectSegmentPoint1 = vertNodeMap[nodeVert];
+					}
+					else
+					{
+						selectSegmentPoint1 = 999999;
+					}
+					break;
+				}
+				else
+				{
+					if (selectSegmentPoint2Valid)
+					{
+						if (nodeVert == selectVert2)
+						{
+							std::cout << "selecting node2 again" << std::endl;
+							selectSegmentPoint2Valid = false;
+							break;
+						}
+					}
+					std::cout << "Selecting new node1, pushing node1 onto node 2" << std::endl;
+					selectSegmentPoint2Valid = selectSegmentPoint1Valid;
+					selectSegmentPoint2 = selectSegmentPoint1;
+					selectVert2 = selectVert1;
+					component2 = component1;
+					selectSegmentPoint1Valid = true;
+					component1 = selectComponent;
+					selectVert1 = nodeVert;
+					if (vertNodeMap.count(nodeVert) > 0)
+					{
+						selectSegmentPoint1 = vertNodeMap[nodeVert];
+					}
+					else
+					{
+						selectSegmentPoint1 = 999999;
+					}
+					break;
+				}
+			}
+			else
+			{
+				std::cout << "selecting new node 1 " << std::endl;
+				selectSegmentPoint1Valid = true;
+				component1 = selectComponent;
+				selectVert1 = nodeVert;
+				if (vertNodeMap.count(nodeVert) > 0)
+				{
+					selectSegmentPoint1 = vertNodeMap[nodeVert];
+				}
+				else
+				{
+					selectSegmentPoint1 = 999999;
+				}
+				break;
+			}
+		}
+
+		if (selectSegmentPoint2Valid)
+		{
+			std::cout << "component2 " << component2 << std::endl;
+			std::cout << "vert 2 " << selectVert2 << std::endl;
+			if (vertNodeMap.count(selectSegmentPoint2) == 0)
+			{
+				std::cout << "Creating node end " << std::endl;
+				selectSegmentPoint2 = addNode(selectVert2, &mSkeleton);
+				operator[](selectSegmentPoint2).connectedComponent = component2;
+				operator[](selectSegmentPoint2).updateColors(nodeOptions);
+			}
+			std::cout << "Node 2 " << selectSegmentPoint2 << std::endl;
+		}
+		if (selectSegmentPoint1Valid)
+		{
+			std::cout << "component1 " << component1 << std::endl;
+			std::cout << "vert 1 " << selectVert1 << std::endl;
+			if (vertNodeMap.count(selectSegmentPoint1) == 0)
+			{
+				std::cout << "Creating node 1" << std::endl;
+				selectSegmentPoint1 = addNode(selectVert1, &mSkeleton);
+				operator[](selectSegmentPoint1).connectedComponent = component1;
+				operator[](selectSegmentPoint1).updateColors(nodeOptions);
+			}
+			std::cout << "Node 1 " << selectSegmentPoint1 << std::endl;
+		}
+
+		std::cout << "Leaving private selection " << std::endl;
+	}
+
+	std::vector<MetaE> BMetaGraph::privateShortestPath(MetaV source, MetaV target)
+	{
+		using weight_map_t = boost::property_map<BMetaGraph, float BMetaEdge::*>::type;
+		weight_map_t kWeightMap = boost::get(&BMetaEdge::mLength, *this);
+
+		std::vector<int> distances(boost::num_vertices(*this));
+		std::vector<MetaV> predecessors(boost::num_vertices(*this));
+
+		boost::dijkstra_shortest_paths(*this, source,
+			boost::predecessor_map(boost::make_iterator_property_map(predecessors.begin(), boost::get(boost::vertex_index, *this)))
+			.distance_map(boost::make_iterator_property_map(distances.begin(), boost::get(boost::vertex_index, *this)))
+			.weight_map(kWeightMap)
+		);
+
+		// Extract the shortest path from start to end.
+		MetaV v = target;
+		std::vector<MetaE> shourtestPath;
+		for (MetaV u = predecessors[v]; u != v; v = u, u = predecessors[v])
+		{
+			std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+			shourtestPath.push_back(edge_pair.first);
+		}
+
+		return shourtestPath;
+	}
+
 	MetaV BMetaGraph::getFirstMetaNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid)
 	{
 		mvec rayOrigin = mvec(eyeX, eyeY, eyeZ);
@@ -694,6 +1288,11 @@ namespace Roots
 				scale *= nodeSelectionScaling;
 			}
 
+			if (*mvi.first == selectStemStart || *mvi.first == selectStemEnd)
+			{
+				scale *= nodeSelectionScaling;
+			}
+
 			pointPick(rayDir, rayOrigin, point, scale, hits, hitDist);
 
 			if (hits && hitDist > 0)
@@ -713,7 +1312,7 @@ namespace Roots
 
 	MetaV BMetaGraph::selectNodeByRender(int mouseX, int mouseY, bool &isValid)
 	{
-		std::cout << "Selecting node by render" << std::endl;
+		std::cout << "Selecting node by render " << std::endl;
 		nodePickRender();
 		glFlush();
 		glFinish();
@@ -772,6 +1371,7 @@ namespace Roots
 
 	SkelVert BMetaGraph::selectVertByRender(int mouseX, int mouseY, bool &isValid)
 	{
+		std::cout << "Selecting vertex by render " << std::endl;
 		vertPickRender();
 		glFlush();
 		glFinish();
@@ -1004,12 +1604,20 @@ namespace Roots
 	{
 		selectNode1Valid = false;
 		selectNode2Valid = false;
+		selectStemStartValid = false;
+		selectStemEndValid = false;
+		PrimaryBranchSelectionValid = false;
+		selectPrimaryNodesValid = false;
+		selectSegmentPoint1Valid = false;
+		selectSegmentPoint2Valid = false;
 		//unselectAllEdges();
+
 		if (breakEdgeValid)
 		{
 			unselectEdge(breakEdge);
 		}
 		breakEdgeValid = false;
+
 		if (splitEdgeValid)
 		{
 			unselectEdge(splitEdge);
@@ -1019,11 +1627,22 @@ namespace Roots
 			}
 		}
 		splitEdgeValid = false;
+
 		if (removeComponentEdgeValid)
 		{
 			unselectEdge(removeComponentEdge);
 		}
 		removeComponentEdgeValid = false;
+		
+	}
+
+	void BMetaGraph::unselectAllTraits()
+	{
+		selectPrimaryNodesValid = false;
+		if (!PrimaryNodes.empty())
+		{
+			PrimaryNodes.clear();
+		}
 	}
 
 	void BMetaGraph::unselectAllEdges()
@@ -1076,6 +1695,25 @@ namespace Roots
 	void BMetaGraph::selectEdge(MetaE edge)
 	{
 		operator[](edge).select(edgeOptions.flatSelectionColor, vertexColors);
+	}
+
+	void BMetaGraph::highLightEdge(MetaE edge)
+	{
+		operator[](edge).highLight(edgeOptions.flatSelectionColor, vertexColors);
+	}
+
+	void BMetaGraph::unhighLightEdge(MetaE edge)
+	{
+		operator[](edge).unhighLigh(vertexColors);
+	}
+
+	void BMetaGraph::colorEdge(MetaE edge, GLfloat *color)
+	{
+		operator[](edge).highLight(color, vertexColors);
+	}
+	void BMetaGraph::uncolorEdge(MetaE edge)
+	{
+		operator[](edge).unhighLigh(vertexColors);
 	}
 
 	void BMetaGraph::startRotation(int mx, int my)
