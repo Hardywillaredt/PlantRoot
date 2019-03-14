@@ -1110,6 +1110,12 @@ namespace Roots
 		selectSegmentPoint2 = 99999999;
 		selectSegmentPoint1Valid = false; 
 		selectSegmentPoint2Valid = false;
+		SegmentMetaEdges = {};
+		SegmentHorizontalRadius = 20;
+		SegmentPath = {};
+		SegmentPath_node = {};
+		SegmentNodesDistances = {};
+
 	}
 
 	//BMetaGraph::BMetaGraph(std::string filename)
@@ -1432,7 +1438,7 @@ namespace Roots
 			wordOn = 0;
 			words = {};
 			boost::split(words, lines[lineOn], boost::is_any_of(" "));
-
+			
 			/*
 			MetaV v = boost::lexical_cast<unsigned int>(words[wordOn]);
 			auto pos = std::find(StemPath_node.begin(), StemPath_node.end(), v);
@@ -1495,12 +1501,13 @@ namespace Roots
 			filestream << PrimaryNodes[it].first << " " << PrimaryNodes[it].second << std::endl;
 		}
 
+		// save primary branches
 		for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
 		{
 			filestream << vectorit->primaryNodeIndex << " " << vectorit->branchEndNode << " " << vectorit->metaEdges.size();
 			for (MetaE edge : vectorit->metaEdges)
 			{
-				filestream << " " << edge;
+				filestream << " " << edge.m_source;
 			}
 			filestream << std::endl;
 		}
@@ -1754,6 +1761,17 @@ namespace Roots
 		}
 
 		// push back to selectedSegmentVBO
+		if (SegmentMetaEdges.size() > 0)
+		{
+			for (MetaE edge : SegmentMetaEdges)
+			{
+				BMetaEdge *Medge = &operator[](edge);
+				for (int i = 0; i < Medge->indicesList.size(); ++i)
+				{
+					selectedSegmentVBO.push_back(Medge->indicesList[i]);
+				}
+			}
+		}
 
 		// push back to primaryBranchesVBO
 		if (PrimaryBranchesObj.size() > 0)
@@ -2649,12 +2667,13 @@ namespace Roots
 		{
 			return;
 		}
-		
+		StemPath.clear();
+		StemPath_node.clear();
 		using weight_map_t = boost::property_map<BMetaGraph, float BMetaEdge::*>::type;
 		weight_map_t kWeightMap = boost::get(&BMetaEdge::mLength, *this);
 		
-		
 		std::vector<int> distances(boost::num_vertices(*this));
+		std::cout << "boost::num_vertices(*this)" << boost::num_vertices(*this) << std::endl;
 		std::vector<MetaV> predecessors(boost::num_vertices(*this));
 
 		boost::dijkstra_shortest_paths(*this, selectStemStart,
@@ -2783,6 +2802,7 @@ namespace Roots
 		b.branchEndNode = PrimaryBranchSelection;
 		b.metaEdges = shourtestPath;
 		PrimaryBranchesObj.push_back(b);
+		
 
 		/*
 		for (MetaV source : PrimaryBranchesNode)
@@ -2835,6 +2855,40 @@ namespace Roots
 		std::cout << "Exit SelectPrimaryBranchesOperation " << std::endl;
 	}
 
+	void BMetaGraph::RemovePrimaryBranchesOperation()
+	{
+		std::cout << "Enter RemovePrimaryBranchesOperation " << std::endl;
+
+		if (!PrimaryBranchSelectionValid)
+		{
+			return;
+		}
+
+		MetaV v = PrimaryBranchSelection;
+		std::cout << "size " << PrimaryBranchesObj.size() << std::endl;
+		for (int i = PrimaryBranchesObj.size()-1; i >= 0; --i)
+		{
+			std::vector<MetaE> edges = PrimaryBranchesObj[i].metaEdges;
+			if (PrimaryBranchesObj[i].primaryNodeIndex == CurrentPrimaryNode)
+			{
+				for (MetaE e : edges)
+				{
+					if (e.m_source == v || e.m_target == v)
+					{
+						PrimaryBranchesObj.erase(PrimaryBranchesObj.begin() + i);
+						std::cout << "size " << PrimaryBranchesObj.size() << std::endl;
+						break;
+					}
+				}
+			}
+		}
+		std::cout << "size " << PrimaryBranchesObj.size() << std::endl;
+
+		unselectAll();
+		buildEdgeVBOs();
+		std::cout << "Exit RemovePrimaryBranchesOperation " << std::endl;
+	}
+
 	void BMetaGraph::SelectSegmentPointOperation()
 	{
 		std::cout << "Select Segment Point Operation " << std::endl;
@@ -2842,10 +2896,14 @@ namespace Roots
 		{
 			return;
 		}
+		SegmentPath.clear();
+		SegmentPath_node.clear();
+		SegmentNodesDistances.clear();
+		
 		using weight_map_t = boost::property_map<BMetaGraph, float BMetaEdge::*>::type;
 		weight_map_t kWeightMap = boost::get(&BMetaEdge::mLength, *this);
 
-		std::vector<int> distances(boost::num_vertices(*this));
+		std::vector<float> distances(boost::num_vertices(*this));
 		std::vector<MetaV> predecessors(boost::num_vertices(*this));
 
 		boost::dijkstra_shortest_paths(*this, selectSegmentPoint1,
@@ -2855,8 +2913,6 @@ namespace Roots
 		);
 
 		// Extract the shortest path from start to end.
-		std::vector<MetaE> SegmentPath;
-		std::vector<MetaV> SegmentPath_node;
 		MetaV v = selectSegmentPoint2;
 		for (MetaV u = predecessors[v]; u != v; v = u, u = predecessors[v])
 		{
@@ -2867,86 +2923,254 @@ namespace Roots
 		std::cout << std::endl;
 		double distance = 0;
 		MetaV v_tmp;
+		std::cout << "selectSegmentPoint1: " << selectSegmentPoint1 << std::endl;
+		std::cout << "selectSegmentPoint2: " << selectSegmentPoint2 << std::endl;
 		for (std::vector<MetaE>::reverse_iterator riter = SegmentPath.rbegin(); riter != SegmentPath.rend(); ++riter)
 		{
 			MetaV u_tmp = boost::source(*riter, *this);
 			v_tmp = boost::target(*riter, *this);
 			MetaE e_tmp = boost::edge(u_tmp, v_tmp, *this).first;
 			distance += operator[](e_tmp).mLength;
-			std::cout << "  " << mSkeleton[operator[](u_tmp).mSrcVert].id << " -> " << mSkeleton[operator[](v_tmp).mSrcVert].id << "    (length: " << operator[](e_tmp).mLength << ")" << std::endl;
-
+			std::cout << " u_tmp " << mSkeleton[operator[](u_tmp).mSrcVert].id << " -> v_tmp " << mSkeleton[operator[](v_tmp).mSrcVert].id << "    (length: " << operator[](e_tmp).mLength << ")" << std::endl;
+			std::cout << "segment distance u_tmp " << u_tmp << " = boost::source (distances map): " << distances[u_tmp] << std::endl;
+			std::cout << "segment distance v_tmp " << v_tmp << " = boost::target (distances map): " << distances[v_tmp] << std::endl;
 			SegmentPath_node.push_back(u_tmp);
 		}
 		SegmentPath_node.push_back(v_tmp);
-		std::cout << "distance point1 to point2:" << distance << std::endl;
+		std::cout << "segment distance from top to bottom: " << distance << std::endl;
+		std::cout << "segment distance from top to bottom (distances map): " << distances[selectSegmentPoint2] << std::endl;
 		
-		// find all points. set attribute? add to vector
+		// store distance map of each node on the selected segment
+		// use the distance to control display radius
+		for (MetaV node : SegmentPath_node)
+		{
+			weight_map_t weightMap = boost::get(&BMetaEdge::mLength, *this);
+
+			std::vector<float> distancemap(boost::num_vertices(*this));
+			std::vector<MetaV> predecessormap(boost::num_vertices(*this));
+
+			boost::dijkstra_shortest_paths(*this, node,
+				boost::predecessor_map(boost::make_iterator_property_map(predecessormap.begin(), boost::get(boost::vertex_index, *this)))
+				.distance_map(boost::make_iterator_property_map(distancemap.begin(), boost::get(boost::vertex_index, *this)))
+				.weight_map(weightMap)
+			);
+			SegmentNodesDistanceStruct info;
+			info.node = node;
+			info.distance = distancemap;
+			SegmentNodesDistances.push_back(info);
+		}
+		SetSelectSegmentPointOperation();
+		unselectAll();
+		return;
+	}
+
+	void BMetaGraph::SetSelectSegmentPointOperation()
+	{
+		if (SegmentPath.empty() || SegmentPath_node.empty())
+		{
+			return;
+		}
+
 		// selected segment. find all edges. add to vector
 		std::vector<bool> visitedNodes = std::vector<bool>(mSkeleton.m_vertices.size(), false);
+		//std::vector<SkelVert> VerticesStack = {};
+		std::vector<MetaV> SegmentMetaNodeStack = {};
+		SegmentMetaEdges.clear();
 
-		for each(SkelVert node in StemPath_node)
+		// add all metaEdges on stem to VBO
+		// mark all metaNodes on stem to visited
+		for (MetaE edge : SegmentPath)
 		{
-			MetaV startV = addNode(node, &mSkeleton);
-			BSkeleton::adjacency_iterator adjIt, adjEnd;
-			boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(node, mSkeleton);
+			//BMetaEdge *MEdge = &operator[](edge);
+			//std::cout << "Stem node indicesList size " << MEdge->indicesList.size() << std::endl;
+			//for (int i = 0; i < MEdge->indicesList.size(); ++i)
+			//{
+			//	selectedSegmentVBO.push_back(MEdge->indicesList[i]);
+			//}
+			SegmentMetaEdges.push_back(edge);
+			/*
+			for (int i = 0; i < MEdge->mVertices.size() - 1; ++i)
+			{
+				SkelVert v0 = MEdge->mVertices[i];
+				SkelVert v1 = MEdge->mVertices[i + 1];
+				SkelEdge e;
+				bool exists;
+				boost::tie(e, exists) = boost::edge(v0, v1, *this);
+				if (exists)
+				{
+					visitedNodes[v0] = true;
+					visitedNodes[v1] = true;
+					// add metaNode or vertices? 
+					// need to filter out edges with degree = 2
+					if (std::find(VerticesStack.begin(), VerticesStack.end(), v0) != VerticesStack.end())
+						VerticesStack.push_back(v0);
+					if (std::find(VerticesStack.begin(), VerticesStack.end(), v1) != VerticesStack.end())
+						VerticesStack.push_back(v1);
+				}
+			}*/
+		}
+		std::cout << "num of edges on selected segment: " << SegmentMetaEdges.size() << std::endl;
+		for (MetaV node : SegmentPath_node)
+		{
+			visitedNodes[node] = true;
+			SegmentMetaNodeStack.push_back(node);
+		}
+		SegmentMetaNodeStack.erase(SegmentMetaNodeStack.begin());
+		SegmentMetaNodeStack.pop_back();
+
+		std::cout << "num of nodes on segment stem: " << SegmentMetaNodeStack.size() << std::endl;
+
+		// find all adjacent MetaNode of selectSegmentPoint1 and selectSegmentPoint2
+		// mark these metaNode as visited. limit searching range
+		BMetaGraph::adjacency_iterator adjIt, adjEnd;
+		std::deque<MetaV> neighbors;
+		neighbors.push_back(selectSegmentPoint1);
+		neighbors.push_back(selectSegmentPoint2);
+		visitedNodes[selectSegmentPoint1] = true;
+		visitedNodes[selectSegmentPoint2] = true;
+		// prevent loops effect
+		for (int i = 0; i < 80; i++)
+		{
+			if (neighbors.empty())
+				break;
+			MetaV node = neighbors.front();
+			std::wcout << "front pop " << node << std::endl;
+			neighbors.pop_front();
+			//neighbors.erase(neighbors.begin());
+			boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(node, *this);
+			for (; adjIt != adjEnd; ++adjIt)
+			{
+				MetaV temp = *adjIt;
+				//if (std::find(SegmentPath_node.begin(), SegmentPath_node.end(), temp) != SegmentPath_node.end() && !visitedNodes[temp])
+				if (!visitedNodes[temp])
+				{
+					neighbors.push_back(temp);
+					visitedNodes[temp] = true;
+				}
+			}
+		}
+		/*
+		boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(selectSegmentPoint2, *this);
+		for (; adjIt != adjEnd; ++adjIt)
+		{
+			MetaV temp = *adjIt;
+			visitedNodes[temp] = true;
+		}*/
+		
+		// breadth first search and add metaEdges within user defined range to VBO
+		while (!SegmentMetaNodeStack.empty())
+		{
+			BMetaGraph::adjacency_iterator adjIt, adjEnd;
+			MetaV currentNode = SegmentMetaNodeStack.front();
+			SegmentMetaNodeStack.erase(SegmentMetaNodeStack.begin());
+			boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(currentNode, *this);
 
 			for (; adjIt != adjEnd; ++adjIt)
 			{
-				SkelVert leadVert = *adjIt;
-				findSegmentEdges(startV, leadVert, visitedNodes, true);
+				//SkelVert temp = *adjIt;
+				MetaE e;
+				bool exists;
+				boost::tie(e, exists) = boost::edge(currentNode, *adjIt, *this);
+				if (exists && MinDistanceToSelectedSegment(*adjIt) < SegmentHorizontalRadius)
+				{
+					// distance less than SegmentHorizontalRadius
+					SegmentMetaEdges.push_back(e);
+					if (!visitedNodes[*adjIt])
+					{
+						visitedNodes[*adjIt] = true;
+						SegmentMetaNodeStack.push_back(*adjIt);
+					}
+				}
 			}
 		}
-
-		unselectAll();
+		
 		buildEdgeVBOs();
 		std::cout << "Found segment " << std::endl;
 		return;
 
 	}
 
-	MetaE BMetaGraph::findSegmentEdges(MetaV startV, SkelVert &lead, std::vector<bool> &visitedSkelVerts, bool isLoading)
+	float BMetaGraph::MinDistanceToSelectedSegment(MetaV point)
 	{
-		//if the metaedge leading out of this node towards the lead has already been visited, then
-		//we do not need to create a new edge
-		if (visitedSkelVerts[lead])
+		float distance = 999999;
+		for (int i = 0; i < SegmentNodesDistances.size(); i++)
 		{
-			return MetaE();
-		}
-
-		std::vector<SkelVert> edgeVerts = {};
-		SkelVert startSkelVert = operator[](startV).mSrcVert;
-		edgeVerts.push_back(startSkelVert);
-		visitedSkelVerts[startSkelVert] = true;
-		SkelVert last = startSkelVert;
-		while (boost::degree(lead, mSkeleton) == 2 && lead != startSkelVert)
-		{
-			edgeVerts.push_back(lead);
-			visitedSkelVerts[lead] = true;
-
-			BSkeleton::adjacency_iterator adjIt, adjEnd;
-			boost::tie(adjIt, adjEnd) = boost::adjacent_vertices(lead, mSkeleton);
-			if (*adjIt != last)
+			if (distance > SegmentNodesDistances[i].distance[point])
 			{
-				last = lead;
-				lead = *adjIt;
-				continue;
+				distance = SegmentNodesDistances[i].distance[point];
 			}
-			++adjIt;
-			if (*adjIt != last)
-			{
-				last = lead;
-				lead = *adjIt;
-				continue;
-			}
-
-			break;
 		}
-
-		edgeVerts.push_back(lead);
-		MetaV endV = addNode(lead, &mSkeleton);
-		return addEdge(startV, endV, edgeVerts, &mSkeleton, isLoading);
+		return distance;
 	}
 
+	float BMetaGraph::DistanceFromPointToLine(MetaV point, MetaV line1, MetaV line2)
+	{
+		float distance = 0;
+		float p[3] = { operator[](point).x(), operator[](point).y(), operator[](point).z()};
+		float p1[3] = { operator[](line1).x(), operator[](line1).y(), operator[](line1).z() };
+		float p2[3] = { operator[](line2).x(), operator[](line2).y(), operator[](line2).z() };
+		/* distance
+		https://math.stackexchange.com/questions/1300484/distance-between-line-and-a-point
+		*/
+		float* a = Substract3DPoint(p, p1);
+		float* b = Substract3DPoint(p2, p1);
+		float c, d, e;
+		c = 0; d = 0; e = 0;
+		for (int i = 0; i < 3; ++i)
+		{
+			c = a[i] * b[i] + c;
+			d = b[i] * b[i] + d;
+		}
+		e = c / d;
+		
+		for (int i = 0; i < 3; ++i)
+		{
+			b[i] = e * b[i];
+		}
+		float* distVector = Substract3DPoint(a, b);
+		for (int i = 0; i < 3; ++i)
+		{
+			distance = distVector[i] * distVector[i] + distance;
+		}
+		distance = std::sqrt(distance);
+		/*
+		int a, b, c, d;
+		//a = mSkeleton[operator[](selectStemStart).mSrcVert].p[0];
+		//a = mSkeleton[operator[](selectStemStart).mSrcVert].x();
+		a = operator[](selectStemEnd).x() - operator[](selectStemStart).x();
+		//std::round(a * 100) / 100.0;
+		//std::cout << "a " << a << std::endl;
+		b = operator[](selectStemEnd).y() - operator[](selectStemStart).y();
+		//std::round(b * 100) / 100.0;
+		//std::cout << "b " << b << std::endl;
+		c = operator[](selectStemEnd).z() - operator[](selectStemStart).z();
+		//std::round(c * 100) / 100.0;
+		//std::cout << "c " << c << std::endl;
+		d = -a * operator[](selectStemStart).x()
+			- b * operator[](selectStemStart).y()
+			- c * operator[](selectStemStart).z();
+		std::cout << "d " << d << std::endl;
+		std::cout << "x y z " << operator[](selectStemStart).x() << " " <<
+			operator[](selectStemStart).y() << " " << operator[](selectStemStart).z() << std::endl;
+		std::cout << "x y z " << operator[](selectStemEnd).x() << " " <<
+			operator[](selectStemEnd).y() << " " << operator[](selectStemEnd).z() << std::endl;
+		
+		rootClipPlaneNormal[0][0] = a;
+		rootClipPlaneNormal[0][1] = b;
+		rootClipPlaneNormal[0][2] = c;
+		rootClipPlaneNormal[0][3] = d;
+		*/
+		
+		return distance;
+	}
+
+	float* BMetaGraph::Substract3DPoint(float *point0, float *point1)
+	{
+		float* out = new float[5];
+		for (int i = 0; i < 3; ++i)
+			out[i] = point0[i] - point1[i];
+		return out;
+	}
 
 	void BMetaGraph::PromoteOperation(SkelVert toPromote)
 	{

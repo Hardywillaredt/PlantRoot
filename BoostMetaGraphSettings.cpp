@@ -366,7 +366,8 @@ namespace Roots
 
 	void BMetaGraph::setCurrentPrimaryNode(int node)
 	{
-		if (CurrentPrimaryNode != node && CurrentPrimaryNode != -1)
+		std::cout << "CurrentPrimaryNode " << CurrentPrimaryNode << std::endl;
+		if (CurrentPrimaryNode != node)
 		{
 			CurrentPrimaryNode = node;
 			std::cout << "Primary node set to " << node << std::endl;
@@ -407,6 +408,17 @@ namespace Roots
 		buildEdgeVBOs();
 	}
 
+	void BMetaGraph::setSegmentHorizontalSliderRadius(float val)
+	{
+		SegmentHorizontalRadius = val;
+		/*
+		metaEdgeIter mei = boost::edges(*this);
+		for (; mei.first != mei.second; ++mei)
+		{
+			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
+		}*/
+		SetSelectSegmentPointOperation();
+	}
 	
 	/////////////////////////////////////////DRAWING///////////////////////////////////////////////
 
@@ -458,19 +470,19 @@ namespace Roots
 		}
 
 		// show loop
-		if (nonBridgeVBO.size() > 0 && !showTraitsOnly)
+		if (nonBridgeVBO.size() > 0 && !showTraitsOnly && !showSelectedSegment)
 		{
 			glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
 		}
 
 		// show non-loop
-		if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0 && !showTraitsOnly)
+		if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0 && !showTraitsOnly && !showSelectedSegment)
 		{
 			glLineWidth(edgeOptions.scale);
 			glDrawElements(GL_LINES, bridgeVBO.size(), GL_UNSIGNED_INT, &bridgeVBO[0]);
 		}
 
-		if (showTraitsOnly || showSelectedSegment)
+		if (showTraitsOnly)
 		{
 			glDrawElements(GL_LINES, stemVBO.size(), GL_UNSIGNED_INT, &stemVBO[0]);
 		}
@@ -484,6 +496,12 @@ namespace Roots
 				MetaE e_tmp = boost::edge(u_tmp, v_tmp, *this).first;
 				highLightEdge(e_tmp);
 			}
+		}
+
+		// only draw selected segment
+		if (selectedSegmentVBO.size() > 0 && showSelectedSegment)
+		{
+			glDrawElements(GL_LINES, selectedSegmentVBO.size(), GL_UNSIGNED_INT, &selectedSegmentVBO[0]);
 		}
 
 		// only draw primary branches with color setting
@@ -591,8 +609,6 @@ namespace Roots
 			}
 		}
 
-		// only draw selected segment
-		
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glDisableClientState(GL_COLOR_ARRAY);
 	}
@@ -793,8 +809,8 @@ namespace Roots
 			if (degree == 0)
 			{
 				drawCube.fancierDraw(nodeColor, node->x(), node->y(), node->z(), scale);
+				// std::cout << "drawNode degree = 0" << std::endl;
 			}
-
 			else
 			{
 				drawSphere.fancierDraw(nodeColor, node->x(), node->y(), node->z(), scale);
@@ -891,12 +907,16 @@ namespace Roots
 
 			if (degree == 0)
 			{
-				drawCube.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+				if (!PrimaryBranchSelectionValid)
+				{
+					drawCube.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+					std::cout << "nodePickRender degree = 0" << std::endl;
+				}
 			}
-
 			else
 			{
 				drawSphere.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+				//std::cout << "test draw node 2333 " << std::endl;
 			}
 		}
 
@@ -981,39 +1001,7 @@ namespace Roots
 
 	}
 
-	void BMetaGraph::getClipPlane()
-	{
-		int a, b, c, d;
-		//a = mSkeleton[operator[](selectStemStart).mSrcVert].p[0];
-		//a = mSkeleton[operator[](selectStemStart).mSrcVert].x();
-		a = operator[](selectStemEnd).x() - operator[](selectStemStart).x();
-		//std::round(a * 100) / 100.0;
-		//std::cout << "a " << a << std::endl;
-		b = operator[](selectStemEnd).y() - operator[](selectStemStart).y();
-		//std::round(b * 100) / 100.0;
-		//std::cout << "b " << b << std::endl;
-		c = operator[](selectStemEnd).z() - operator[](selectStemStart).z();
-		//std::round(c * 100) / 100.0;
-		//std::cout << "c " << c << std::endl;
-		d = -a * operator[](selectStemStart).x()
-			- b * operator[](selectStemStart).y()
-			- c * operator[](selectStemStart).z();
-		/*std::cout << "d " << d << std::endl;
-		std::cout << "x y z " << operator[](selectStemStart).x() << " " <<
-			operator[](selectStemStart).y() << " " << operator[](selectStemStart).z() << std::endl;
-		std::cout << "x y z " << operator[](selectStemEnd).x() << " " <<
-			operator[](selectStemEnd).y() << " " << operator[](selectStemEnd).z() << std::endl;
-		*/
-		rootClipPlaneNormal[0][0] = a;
-		rootClipPlaneNormal[0][1] = b;
-		rootClipPlaneNormal[0][2] = c;
-		rootClipPlaneNormal[0][3] = d;
-		/*
-		for (int i = 0; i < 4; ++i)
-		{
-			std::cout << "stemDirectionVector " << stemDirectionVector[i] << std::endl;
-		}*/
-	}
+	
 
 	void BMetaGraph::draw()
 	{

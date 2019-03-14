@@ -310,7 +310,7 @@ namespace Roots{
 		MetaV selectStemStart, selectStemEnd;
 		bool selectStemStartValid, selectStemEndValid;
 		bool stemSelected;
-		float rootClipPlaneNormal[6][4] = {0};
+		float rootClipPlaneNormal[2][4] = {0};
 		
 		bool showPrimaryNodes;
 		std::vector< std::pair<int, MetaV> > PrimaryNodes;
@@ -328,7 +328,7 @@ namespace Roots{
 		std::vector<std::vector<GLfloat>> randomColorLoopUpTable{
 			{1.0, 0.882, 0.098, 1.0},
 			{0.0, 0.51, 0.784, 1.0},
-			{0.961, 0.51, 0.188, 1.0},
+			{0.51, 0.961, 0.188, 1.0},
 			{0.569, 0.118, 0.706, 1.0},
 			{0.275, 0.941, 0.941, 1.0},
 			{0.941, 0.196, 0.902, 1.0},
@@ -384,6 +384,17 @@ namespace Roots{
 
 		MetaV selectSegmentPoint1, selectSegmentPoint2;
 		bool selectSegmentPoint1Valid, selectSegmentPoint2Valid;
+		std::vector<MetaE> SegmentMetaEdges;
+		float SegmentHorizontalRadius;
+		std::vector<MetaE> SegmentPath;
+		std::vector<MetaV> SegmentPath_node;
+		struct SegmentNodesDistanceStruct
+		{
+			MetaV node;
+			std::vector<float> distance;
+		}; // distance map of each mode on the path of selection
+		std::vector<SegmentNodesDistanceStruct> SegmentNodesDistances;
+
 		//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvSettingsvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//
 
 		
@@ -430,25 +441,29 @@ namespace Roots{
 		void setDisplayOnlyBranchesOfCurrentPrimaryNode(bool doShow);
 		void setDisplayTraitsOnly(bool doShow);
 		void setDisplaySelectedSegment(bool doShow);
-
+		void setSegmentHorizontalSliderRadius(float val);
+		
 		void drawEdges();
 		void edgePickRender();
 		void drawNodes();
 		void nodePickRender();
 		void vertPickRender();
 		void drawBoxes();
-		void getClipPlane();
 		void draw();
 
 		void startRotation(int mx, int my);
 		void mouseMoved(int mx, int my, float zoom);
 		void setZoom(float rad, float eyex, float eyey, float eyez, float upx, float upy, float upz);
 
+	private:
+		float DistanceFromPointToLine(MetaV point, MetaV line1, MetaV line2);
+		float MinDistanceToSelectedSegment(MetaV point);
+		float* Substract3DPoint(float *point0, float *point1);
+
 		//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Settings^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^//
 
 		//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvInteractionsvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv//
-
-
+	public:
 		void selectConnectionNode(int mouseX, int mouseY);
 		void selectBreakEdge(int mouseX, int mouseY);
 		void selectSplitEdge(int mouseX, int mouseY);
@@ -479,6 +494,7 @@ namespace Roots{
 		void privateSelectConnectionNode(SkelVert nodeVert, int selectComponent);
 		void privateSelectStemStartEnd(SkelVert nodeVert, int selectComponent);
 		void privateSelectSegmentPointAction(SkelVert nodeVert, int selectComponent);
+		void privateSelectPrimaryBranches(MetaV target, int selectComponent);
 		std::vector<MetaE> privateShortestPath(MetaV source, MetaV target);
 		void unselectAllTraits();
 		void unselectAllEdges();
@@ -689,10 +705,10 @@ namespace Roots{
 		void SelectStemOperation();
 		void SelectStemPrimaryNodeOperation();
 		void SelectPrimaryBranchesOperation();
+		void RemovePrimaryBranchesOperation();
 		void SelectSegmentPointOperation();
-
+		
 	private:
-		MetaE findSegmentEdges(MetaV start, SkelVert &lead, std::vector<bool> &skelVertsVisited, bool isLoading);
 
 		/*
 		Determines if the provided metanode is of degree 2, and if so, joines the edges leading
@@ -700,7 +716,8 @@ namespace Roots{
 		removing this node and its incident edges from the graph.
 		*/
 		bool BridgeNode(SkelVert vertToBridge);
-
+		
+		void SetSelectSegmentPointOperation();
 		//void BridgeNodeSweeper();
 	public:
 		/*

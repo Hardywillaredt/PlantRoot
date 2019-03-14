@@ -916,61 +916,48 @@ namespace Roots
 	{
 		bool isValid = false;
 
-		MetaV target = selectNodeByRender(mouseX, mouseY, isValid);
-		MetaV v;
+		MetaV node = selectNodeByRender(mouseX, mouseY, isValid);
 		//if we have a valid selection do stuff
 		if (isValid)
 		{
-			MetaV source = PrimaryNodes[CurrentPrimaryNode].second;
-			if (PrimaryBranchSelectionValid)
-			{
-				if (PrimaryBranchSelection == target)
-				{
-					//cancel selection
-					v = target;
-					for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
-					{
-						std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
-						//shourtestPath.push_back(edge_pair.first);
-						unhighLightEdge(edge_pair.first);
-					}
-					PrimaryBranchSelectionValid = false;
-				}
-				else
-				{
-					//assign new selection
-					v = PrimaryBranchSelection;
-					for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
-					{
-						std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
-						//shourtestPath.push_back(edge_pair.first);
-						unhighLightEdge(edge_pair.first);
-					}
-					v = target;
-					for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
-					{
-						std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
-						//shourtestPath.push_back(edge_pair.first);
-						highLightEdge(edge_pair.first);
-					}
-					PrimaryBranchSelection = target;
-					PrimaryBranchSelectionValid = true;
-				}
-			}
-			else
-			{
-				v = target;
-				std::cout << "test 1 " << std::endl;
-				for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
-				{
-					std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
-					//shourtestPath.push_back(edge_pair.first);
-					highLightEdge(edge_pair.first);
-				}
-				PrimaryBranchSelection = target;
-				PrimaryBranchSelectionValid = true;
-			}
+			privateSelectPrimaryBranches(node, operator[](node).connectedComponent);
 		}
+		/*
+		else
+		{
+			SkelVert vert;
+			isValid = false;
+			vert = selectVertByRender(mouseX, mouseY, isValid);
+			if (isValid)
+			{
+				metaEdgeIter mei = boost::edges(*this);
+				int connectedComponent = -1;
+				for (; mei.first != mei.second; ++mei)
+				{
+					BMetaEdge *edge = &operator[](*mei.first);
+					for (SkelVert v : edge->mVertices)
+					{
+						if (vert == v)
+						{
+							connectedComponent = edge->connectedComponent;
+							break;
+						}
+					}
+					if (connectedComponent != -1)
+					{
+						break;
+					}
+				}
+				std::cout << "vert " << vert << std::endl;
+				std::cout << "vertNodeMap[vert] " << vertNodeMap[vert] << std::endl;
+				if (vertNodeMap.count(vert) > 0)
+					node = vertNodeMap[vert];
+				else
+					node = 999999;
+				privateSelectPrimaryBranches(node, connectedComponent);
+			}
+		}*/
+
 		/*
 		if (isValid)
 		{
@@ -1002,9 +989,10 @@ namespace Roots
 		}*/
 		if (PrimaryBranchSelectionValid)
 		{
-			MetaV node = target;
+			// MetaV srcNode0 = vertNodeMap[edge.mVertices[0]];
 			SkelVert selectVert = operator[](node).mSrcVert;
 			std::cout << "Primary Branch end node " << node << std::endl;
+			/*
 			if (vertNodeMap.count(PrimaryBranchSelection) == 0)
 			{
 				std::cout << "Creating node 1" << std::endl;
@@ -1012,10 +1000,80 @@ namespace Roots
 				std::cout << "test node " << std::endl;
 				operator[](node).updateColors(nodeOptions, false);
 				std::cout << "test update " << std::endl;
-			}
+			}*/
 			std::cout << "Node 1- " << node << std::endl;
 		}
 
+	}
+
+	void BMetaGraph::privateSelectPrimaryBranches(MetaV target, int selectComponent)
+	{
+		std::cout << "privateSelectPrimaryBranches begin" << std::endl;
+		MetaV v;
+		MetaV source = PrimaryNodes[CurrentPrimaryNode].second;
+		/*
+		MetaE edge;
+		BMetaEdge *Medge = &operator[](edge);
+		for (int i = 0; i < Medge->indicesList.size(); ++i)
+		{
+			std::cout >> (Medge->indicesList[i]) >> std::endl;
+		}*/
+		
+		std::cout << "test 1 " << std::endl;
+		if (PrimaryBranchSelectionValid)
+		{
+			if (PrimaryBranchSelection == target)
+			{
+				//cancel selection
+				v = target;
+				for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+				{
+					std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+					//shourtestPath.push_back(edge_pair.first);
+					unhighLightEdge(edge_pair.first);
+				}
+				std::cout << "test 2 " << std::endl;
+				PrimaryBranchSelectionValid = false;
+			}
+			else
+			{
+				//assign new selection
+				v = PrimaryBranchSelection;
+				std::cout << "test 3 " << std::endl;
+				for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+				{
+					std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+					//shourtestPath.push_back(edge_pair.first);
+					unhighLightEdge(edge_pair.first);
+				}
+				v = target;
+				std::cout << "test 33 " << std::endl;
+				for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+				{
+					std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+					//shourtestPath.push_back(edge_pair.first);
+					highLightEdge(edge_pair.first);
+				}
+				std::cout << "test 333 " << std::endl;
+				PrimaryBranchSelection = target;
+				PrimaryBranchSelectionValid = true;
+			}
+		}
+		else
+		{
+			v = target;
+			std::cout << "test 4 " << std::endl;
+			for (MetaV u = CurrentPredecessors[v]; u != v; v = u, u = CurrentPredecessors[v])
+			{
+				std::pair<MetaE, bool> edge_pair = boost::edge(u, v, *this);
+				//shourtestPath.push_back(edge_pair.first);
+				highLightEdge(edge_pair.first);
+			}
+			std::cout << "test 5 " << std::endl;
+			PrimaryBranchSelection = target;
+			PrimaryBranchSelectionValid = true;
+		}
+		std::cout << "privateSelectPrimaryBranches end" << std::endl;
 	}
 
 	void BMetaGraph::selectSegmentPointAction(int mouseX, int mouseY)
