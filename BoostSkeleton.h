@@ -177,8 +177,6 @@ namespace Roots
 
 		void updateGLVertices();
 
-
-
 		/*vvvvvvvvvvvvvvvvvvvvv GEOMETRIC MANIPULATIONS vvvvvvvvvvvvvvvvvvvvv*/
 	public:
 		

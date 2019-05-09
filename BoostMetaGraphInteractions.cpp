@@ -899,12 +899,13 @@ namespace Roots
 			{
 				SkelVert selectVert = operator[](it.second).mSrcVert;
 				std::cout << "vert PrimaryNodes " << it.second << std::endl;
+				/*
 				if (vertNodeMap.count(selectVert) == 0)
 				{
 					std::cout << "Creating node 1" << std::endl;
 					MetaV node = addNode(selectVert, &mSkeleton);
 					operator[](node).updateColors(nodeOptions);
-				}
+				}*/
 				std::cout << "Node 1+ " << it.second << std::endl;
 				std::cout << "Node 1- " << node << std::endl;
 			}
@@ -1287,6 +1288,197 @@ namespace Roots
 		return shourtestPath;
 	}
 
+	/*
+	void BMetaGraph::viewNodeInfoAction(int mouseX, int mouseY)
+	{
+		SkelVert vert;
+		MetaV node;
+		bool isValid = false;
+
+		node = selectNodeByRender(mouseX, mouseY, isValid);
+
+		if (isValid)
+		{
+			if (viewNodeInfoValid && node == nodeToView)
+			{
+				viewNodeInfoValid = false;
+			}
+			else
+			{
+				nodeToView = node;
+				vert = operator[](node).mSrcVert;
+				viewNodeInfoValid = true;
+			}
+		}
+		else
+		{
+			isValid = false;
+			vert = selectVertByRender(mouseX, mouseY, isValid);
+			std::cout << "selectVertByRender done " << std::endl;
+			std::cout << "vert " << vert << std::endl;
+			if (isValid)
+			{
+				if (viewNodeInfoValid && vert == operator[](nodeToView).mSrcVert)
+					viewNodeInfoValid = false;
+				else
+				{
+					viewNodeInfoValid = true;
+					if (vertNodeMap.count(vert) > 0)
+					{
+						node = vertNodeMap[vert];
+					}
+					else
+					{
+						node = 999999;
+					}
+				}
+			}
+		}
+
+		if (viewNodeInfoValid)
+		{
+			std::cout << "Node haha " << node << std::endl;
+			if (vertNodeMap.count(node) == 0)
+			{
+				std::cout << "Creating node 111 " << std::endl;
+				// vert = operator[](node).mSrcVert;
+				nodeToView = addNode(vert, &mSkeleton);
+				operator[](nodeToView).connectedComponent = operator[](node).connectedComponent;
+				operator[](nodeToView).updateColors(nodeOptions);
+				std::cout << "node after " << nodeToView << std::endl;
+			}
+			std::cout << "nodeWidth " << operator[](nodeToView).nodeWidth << std::endl;
+			std::cout << "thickness " << operator[](nodeToView).nodeThickness << std::endl;
+			std::cout << "p[:] " << operator[](nodeToView).p[0] << " " << operator[](nodeToView).p[1] << " " << operator[](nodeToView).p[2] << std::endl;
+		}
+	}*/
+
+
+	void BMetaGraph::viewNodeInfoAction(int mouseX, int mouseY)
+	{
+		MetaV node;
+		bool isValid = false;
+
+		node = selectNodeByRender(mouseX, mouseY, isValid);
+
+		if (isValid)
+		{
+			privateSelectNodeToView(operator[](node).mSrcVert, operator[](node).connectedComponent);
+		}
+		else
+		{
+			SkelVert vert;
+			isValid = false;
+			vert = selectVertByRender(mouseX, mouseY, isValid);
+			if (isValid)
+			{
+				metaEdgeIter mei = boost::edges(*this);
+				int connectedComponent = -1;
+				for (; mei.first != mei.second; ++mei)
+				{
+					BMetaEdge *edge = &operator[](*mei.first);
+					for (SkelVert v : edge->mVertices)
+					{
+						if (vert == v)
+						{
+							connectedComponent = edge->connectedComponent;
+							break;
+						}
+					}
+					if (connectedComponent != -1)
+					{
+						break;
+					}
+				}
+
+				privateSelectNodeToView(vert, connectedComponent);
+			}
+		}
+	}
+
+	void BMetaGraph::privateSelectNodeToView(SkelVert nodeVert, int selectComponent)
+	{
+		int component1 = -1;
+		SkelVert selectVert1 = 99999;
+		if (viewNodeInfoValid)
+		{
+			component1 = operator[](nodeToView).connectedComponent;
+			selectVert1 = operator[](nodeToView).mSrcVert;
+			if (boost::degree(nodeToView, *this) == 0)
+			{
+				removeNode(nodeToView);
+				nodeToView = 99999;
+			}
+		}
+		
+		std::cout << "private select connection node " << std::endl;
+		for (int i = 0; i < 1; ++i)
+		{
+			if (viewNodeInfoValid)
+			{
+				if (nodeVert == selectVert1)
+				{
+					std::cout << "Selecting node1 again, cancel node1. " << std::endl;
+					viewNodeInfoValid = false;
+					break;
+				}
+				else
+				{
+					std::cout << "Selecting on same component " << std::endl;
+					viewNodeInfoValid = true;
+					component1 = selectComponent;
+					selectVert1 = nodeVert;
+					if (vertNodeMap.count(nodeVert) > 0)
+					{
+						nodeToView = vertNodeMap[nodeVert];
+					}
+					else
+					{
+						nodeToView = 999999;
+					}
+					break;
+				}
+			}
+			else
+			{
+				std::cout << "selecting new node 1 " << std::endl;
+				viewNodeInfoValid = true;
+				component1 = selectComponent;
+				selectVert1 = nodeVert;
+				if (vertNodeMap.count(nodeVert) > 0)
+				{
+					nodeToView = vertNodeMap[nodeVert];
+				}
+				else
+				{
+					nodeToView = 999999;
+				}
+				break;
+			}
+		}
+
+		if (viewNodeInfoValid)
+		{
+			std::cout << "component1 " << component1 << std::endl;
+			std::cout << "vert 1 " << selectVert1 << std::endl;
+			if (vertNodeMap.count(nodeToView) == 0)
+			{
+				std::cout << "Creating node 1" << std::endl;
+				nodeToView = addNode(selectVert1, &mSkeleton);
+				operator[](nodeToView).connectedComponent = component1;
+				operator[](nodeToView).updateColors(nodeOptions);
+			}
+			std::cout << "Node 1 " << nodeToView << std::endl;
+			std::cout << "nodeWidth " << operator[](nodeToView).nodeWidth << std::endl;
+			std::cout << "thickness " << operator[](nodeToView).nodeThickness << std::endl;
+			std::cout << "p[:] " << operator[](nodeToView).p[0] << " " << operator[](nodeToView).p[1] << " " << operator[](nodeToView).p[2] << std::endl;
+
+		}
+
+		std::cout << "Leaving private selection " << std::endl;
+	}
+
+
 	MetaV BMetaGraph::getFirstMetaNodeHit(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, bool &isValid)
 	{
 		mvec rayOrigin = mvec(eyeX, eyeY, eyeZ);
@@ -1662,6 +1854,7 @@ namespace Roots
 	{
 		selectNode1Valid = false;
 		selectNode2Valid = false;
+		viewNodeInfoValid = false;
 		selectStemStartValid = false;
 		selectStemEndValid = false;
 		PrimaryBranchSelectionValid = false;

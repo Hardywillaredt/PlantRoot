@@ -268,9 +268,14 @@ namespace Roots{
 		std::vector<GLuint> bridgeVBO;
 		std::vector<GLuint> nonBridgeVBO;
 		std::vector<GLuint> selectionVBO;
+
 		std::vector<GLuint> selectedSegmentVBO;
 		std::vector<GLuint> primaryBranchesVBO;
 		std::vector<GLuint> stemVBO;
+
+		std::vector<GLuint> autoStemVBO;
+
+		std::vector<GLuint> testVBO; // use for debug
 		GLfloat selectionColor[4];
 		float eyeShiftX, eyeShiftY;
 		Mesh alphaMesh;
@@ -303,15 +308,22 @@ namespace Roots{
 		int getNumGLVertices();
 
 		// find traits
+		MetaV nodeToView;
+		bool viewNodeInfoValid;
+
+		bool showSuggestedStem;
 		bool showStem;
 		std::vector<MetaE> StemPath;
 		std::vector<MetaV> StemPath_node;
-
+		std::vector<SkelEdge> auto_stem;
+		
 		MetaV selectStemStart, selectStemEnd;
 		bool selectStemStartValid, selectStemEndValid;
 		bool stemSelected;
 		float rootClipPlaneNormal[2][4] = {0};
 		
+		bool showSuggestedNode;
+		std::vector<BoundingBox> auto_node;
 		bool showPrimaryNodes;
 		std::vector< std::pair<int, MetaV> > PrimaryNodes;
 		bool selectPrimaryNodesValid;
@@ -325,17 +337,21 @@ namespace Roots{
 		int CurrentPrimaryNode;
 		std::vector<MetaV> CurrentPredecessors;
 		GLfloat selectedPrimaryNodeColor[4] = { 0.0, 1.0, 0.0, 1.0 };
+		GLfloat YELLOW[4] = { 1.0, 1.0, 0.0, 1.0 };
+		GLfloat RED[4] = { 1.0, 0.0, 0.0, 1.0 };
+		GLfloat GREEN[4] = { 0.0, 1.0, 0.0, 1.0 };
+		GLfloat BLUE[4] = { 0.0, 0.0, 1.0, 1.0 };
 		std::vector<std::vector<GLfloat>> randomColorLoopUpTable{
-			{1.0, 0.882, 0.098, 1.0},
-			{0.0, 0.51, 0.784, 1.0},
-			{0.51, 0.961, 0.188, 1.0},
+			{0.824, 0.961, 0.235, 1.0},
 			{0.569, 0.118, 0.706, 1.0},
 			{0.275, 0.941, 0.941, 1.0},
 			{0.941, 0.196, 0.902, 1.0},
-			{0.824, 0.961, 0.235, 1.0},
+			{1.0, 0.882, 0.098, 1.0},
 			{0.98, 0.745, 0.745, 1.0},
+			{0.0, 0.51, 0.784, 1.0},
+			{0.51, 0.961, 0.188, 1.0},
 			{0.0, 0.502, 0.502, 1.0},
-			{0.902, 0.745, 1.0, 1.0}/*,
+			{0.902, 0.745, 1.0, 1.0},
 			{0.667f, 0.431f, 0.157f, 1.0f},
 			{1.0f, 0.98f, 0.784f, 1.0f},
 			{0.502f, 0.0f, 0.0f, 1.0f},
@@ -363,7 +379,7 @@ namespace Roots{
 			{0.502f, 0.502f, 0.0f, 1.0f},
 			{1.0f, 0.843f, 0.706f, 1.0f},
 			{0.0f, 0.0f, 0.502f, 1.0f},
-			{0.502f, 0.502f, 0.502f, 1.0f} */};
+			{0.502f, 0.502f, 0.502f, 1.0f} };
 		
 		
 		bool PrimaryBranchSelectionValid;
@@ -381,10 +397,12 @@ namespace Roots{
 		bool isRandomColorizePrimaryNodes;
 		bool showOnlyBranchesOfCurrentPrimaryNode;
 		bool showSelectedSegment;
+		std::vector<MetaV> TraitsNodes;
 
 		MetaV selectSegmentPoint1, selectSegmentPoint2;
 		bool selectSegmentPoint1Valid, selectSegmentPoint2Valid;
 		std::vector<MetaE> SegmentMetaEdges;
+		std::vector<MetaV> SegmentMetaNodes;
 		float SegmentHorizontalRadius;
 		std::vector<MetaE> SegmentPath;
 		std::vector<MetaV> SegmentPath_node;
@@ -433,8 +451,11 @@ namespace Roots{
 		void setComponent1(int component);
 		void setComponent2(int component);
 		void setShowBoundingBoxes(bool doShow);
+
 		void setDisplayStem(bool doShowStem);
+		void setDisplaySuggestedStem(bool doShow);
 		void setDisplayPrimaryNodes(bool doShowPriamryStem);
+		void setDisplaySuggestedNode(bool doShow);
 		void setCurrentPrimaryNode(int layer);
 		void setDisplayConfirmedPrimaryBranches(bool doShowConfirmedBranches);
 		void setRandomColorizePrimaryNodes(bool doShow);
@@ -472,6 +493,7 @@ namespace Roots{
 		void selectStemPrimaryNode(int mouseX, int mouseY);
 		void selectPrimaryBranches(int mouseX, int mouseY);
 		void selectSegmentPointAction(int mouseX, int mouseY);
+		void viewNodeInfoAction(int mouseX, int mouseY);
 
 		void setSelectionColor(float r, float g, float b);
 		void unselectAll();
@@ -496,6 +518,7 @@ namespace Roots{
 		void privateSelectSegmentPointAction(SkelVert nodeVert, int selectComponent);
 		void privateSelectPrimaryBranches(MetaV target, int selectComponent);
 		std::vector<MetaE> privateShortestPath(MetaV source, MetaV target);
+		void privateSelectNodeToView(SkelVert nodeVert, int selectComponent);
 		void unselectAllTraits();
 		void unselectAllEdges();
 
@@ -707,7 +730,26 @@ namespace Roots{
 		void SelectPrimaryBranchesOperation();
 		void RemovePrimaryBranchesOperation();
 		void SelectSegmentPointOperation();
-		
+
+		/*
+		Automatic find stem. 
+		Require input: lower threshold
+		The algorithm first find a set of edges which has radius larger than the input threshold.
+		Then find the minima spanning tree out of the selected edges. Finally, find the longest path
+		within the MST
+		*/
+		void FindStemOperation(float lowThreshold);
+		float getEdgeEuclidLength(SkelEdge srcId, BSkeleton *skel);
+		float getVertThickness(SkelVert srcId, BSkeleton *skel);
+		float getVertWidth(SkelVert srcId, BSkeleton *skel);
+
+		/*
+		Automatically find priamry nodes
+		*/
+		void FindPrimaryNodeOperation(float look_distance, float kernel_bandwidth);
+		std::vector<float> neighbourhoodPoints(std::vector<float> positions, float x_centroid, float distance = 5);
+		float gaussian_kernal(float distance, int bandwidth);
+
 	private:
 
 		/*
@@ -726,6 +768,19 @@ namespace Roots{
 		int GetEdgeComponent(MetaE edge);
 	};
 
+	struct DisjointSets
+	{
+		int *parent, *rnk;
+		int n;
+
+		// Constructor. 
+		DisjointSets(int n);
+		// Find the parent of a node 'u' 
+		// Path Compression 
+		int find(int u);
+		// Union by rank 
+		void merge(int x, int y);
+	};
 }
 
 typedef boost::graph_traits<Roots::BMetaGraph>::vertex_iterator vertIter;
