@@ -1,11 +1,11 @@
 # PlantRoot
-#### Aim ####
+### Aim ###
 Discover biologically significant traits form CT scan of plant root.
-#### How #### 
+### How ###
 1. Using [persistent homology](https://www.cse.wustl.edu/~taoju/research/homology_CCCG.pdf) to deal with topological noise.
 2. Build graph structure for skeleton.
 3. Build root heirarchy to understand biologically meaningful traits.
-#### Skeleton Data Structure ####
+### Skeleton Data Structure ###
 1. Lower level
    - node - defined by 3D location (x,y,z)
    - edge - defined by 2 nodes
@@ -16,10 +16,10 @@ Discover biologically significant traits form CT scan of plant root.
 
 
 ## Installation Guide ##
-Environment: Windows 10 64bit, Python 3.7.3 64bit, Visual Studio 2015 or 2017
-Download python from: https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe
-After installation, if you cannot run python in command line, right click on "This PC", select "Properties -- Advanced System Settings -- Environment Variables.." and add your directory which contains python.exe, then you should be able to run python and pip3.
-Note that Visual Studio 2015 does NOT install the languages by default. If you are using Visual Studio 2015, you need to manually choose to install the languages in the customized section during setup.
+ - Environment: Windows 10 64bit, Python 3.7.3 64bit, Visual Studio 2015 or 2017
+ - Download python from: https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe
+ - After installation, if you cannot run python in command line, right click on "This PC", select "Properties -- Advanced System Settings -- Environment Variables.." and add your directory which contains python.exe, then you should be able to run python and pip3.
+ - Note that Visual Studio 2015 does NOT install the languages by default. If you are using Visual Studio 2015, you need to manually choose to install the languages in the customized section during setup.
 #### Install Dependencies ####
 1. Download Boost 1.68.0 from: https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.zip and extract the contents to a folder of your choice.
 2. In command line, cd to its directory and run ".\bootstrap.bat". You should see an executable file "b2" is generated.
@@ -36,17 +36,17 @@ Having the same version as listed above guarentees a working environment. Having
 #### Modify CMakeLists.txt #### 
 1. Navigate to your project directory and find CMakeLists.txt.
 2. Modify the following lines:
-  - set(BOOST_INCLUDEDIR ... <- This is your boost header (.../boost_1_68_0/boost)
-  - set(BOOST_ROOT ... <- This is your boost directory (.../boost_1_68_0)
-  - set(GLFW_INCLUDEDIR ... <- This is your glfw include directory (.../glfw-3.3.bin.WIN64/include)
-  - set(GLFW_LIB ... <- This is your glfw library file (.../glfw-3.3.bin.WIN64/lib-vc2015/glfw3.lib)
-  - set(GLAD_INCLUDEDIR ... <- This is your glad include directory (.../glad/include)
-  - set(BoostPythonLib ... <- This is your boost python library (.../boost_1_68_0/stage/lib/libboost_python37-vc140-mt-gd-x64-1_68.lib) Make sure you use "mt-gd-x64" if there are other ones.
-  - set(OpenCV_DIR ... <- This is your opencv build directory (.../opencv/build)
-  - set(BOOST_INCLUDE_DIRS ... <- This is the same as your boost directory (.../boost_1_68_0)
-  - set(BOOST_LIBRARY_DIRS ... <- This is your boost python libary directory (.../boost_1_68_0/stage/lib)
-  - set(PYTHON_DIR ... <- This is the directory that has your python.exe (.../Python/Python37)
-  - set_target_properties(RootsEXE PROPERTIES RUNTIME_OUTPUT_DIRECTORY ... <- This is the debug directory (.../PlantRoot/x64/Debug)
+   - set(BOOST_INCLUDEDIR ... <- This is your boost header (.../boost_1_68_0/boost)
+   - set(BOOST_ROOT ... <- This is your boost directory (.../boost_1_68_0)
+   - set(GLFW_INCLUDEDIR ... <- This is your glfw include directory (.../glfw-3.3.bin.WIN64/include)
+   - set(GLFW_LIB ... <- This is your glfw library file (.../glfw-3.3.bin.WIN64/lib-vc2015/glfw3.lib)
+   - set(GLAD_INCLUDEDIR ... <- This is your glad include directory (.../glad/include)
+   - set(BoostPythonLib ... <- This is your boost python library (.../boost_1_68_0/stage/lib/libboost_python37-vc140-mt-gd-x64-1_68.lib) Make sure you use "mt-gd-x64" if there are other ones.
+   - set(OpenCV_DIR ... <- This is your opencv build directory (.../opencv/build)
+   - set(BOOST_INCLUDE_DIRS ... <- This is the same as your boost directory (.../boost_1_68_0)
+   - set(BOOST_LIBRARY_DIRS ... <- This is your boost python libary directory (.../boost_1_68_0/stage/lib)
+   - set(PYTHON_DIR ... <- This is the directory that has your python.exe (.../Python/Python37)
+   - set_target_properties(RootsEXE PROPERTIES RUNTIME_OUTPUT_DIRECTORY ... <- This is the debug directory (.../PlantRoot/x64/Debug)
 3. Save the file and in command line, cd to your project directory and run 'cmake -G "Visual Studio Win64"'.
 4. Now you should see "RootsToolC.sln" solution generated in your project directory.
 
