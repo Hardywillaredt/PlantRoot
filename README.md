@@ -1,7 +1,7 @@
 # PlantRoot
-Aim: Discover biologically significant traits form CT scan of plant root.
-
-How? 
+#### Aim ####
+Discover biologically significant traits form CT scan of plant root.
+#### How #### 
 1. Using [persistent homology](https://www.cse.wustl.edu/~taoju/research/homology_CCCG.pdf) to deal with topological noise.
 2. Build graph structure for skeleton.
 3. Build root heirarchy to understand biologically meaningful traits.
@@ -15,7 +15,7 @@ How?
    - metaFace
 
 
-### Instructions ###
+## Installation Guide ##
 Environment: Windows 10 64bit, Python 3.7.3 64bit, Visual Studio 2015 or 2017
 Download python from: https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe
 After installation, if you cannot run python in command line, right click on "This PC", select "Properties -- Advanced System Settings -- Environment Variables.." and add your directory which contains python.exe, then you should be able to run python and pip3.
