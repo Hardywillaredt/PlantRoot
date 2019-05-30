@@ -23,19 +23,19 @@ Point3d::Point3d(float ax, float ay, float az, float thickness, float width, int
 	p[1] = ay;
 	p[2] = az;
 	p[3] = thickness;
-	p[4] = width + 0.0000001;
+	p[4] = width + 0.0000001f;
 	p[5] = thickness / width;
 	id = index;
 }
 
 Point3d::Point3d()
 {
-	p[0] = 0;
-	p[1] = 0;
-	p[2] = 0;
-	p[3] = 0;
-	p[4] = 0.0000001;
-	p[5] = 0;
+	p[0] = 0.0f;
+	p[1] = 0.0f;
+	p[2] = 0.0f;
+	p[3] = 0.0f;
+	p[4] = 0.0000001f;
+	p[5] = 0.0f;
 	id = 0;
 }
 

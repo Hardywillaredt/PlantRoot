@@ -375,7 +375,7 @@ namespace Roots
 		SkelVert v;
 		v = boost::add_vertex(*this);
 		operator[](v) = pointLocation;
-		operator[](v).id = v;
+		operator[](v).id = (int)v;
 		mBoundsFound = false;
 		return v;
 	}
@@ -401,7 +401,7 @@ namespace Roots
 		}
 		else
 		{
-			float big = 99999999999;
+			float big = (float)99999999999;
 			mMinX = big;
 			mMaxX = -big;
 			mMinY = big;
@@ -439,7 +439,7 @@ namespace Roots
 			sum = sum + operator[](*vIter.first);
 		}
 
-		sum = sum / m_vertices.size();
+		sum = sum / (float)m_vertices.size();
 		//Point3d sum = minPoint + maxPoint;
 		mCenter = sum;
 		originalCenter = mCenter;
@@ -508,7 +508,7 @@ namespace Roots
 		skelVertIter vi = boost::vertices(*this);
 		while (vi.first != vi.second)
 		{
-			int deg = boost::degree(*vi.first, *this);
+			int deg = (int)(boost::degree(*vi.first, *this));
 			if (deg != 2 && deg != 0)
 			{
 				result.push_back(*vi.first);
@@ -605,8 +605,7 @@ void PySkeleton::reload()
 
 	for (int i = 0; i < 11; ++i)
 	{
-		float fi = i;
-		int idx = (fi / 10.0) * thicknessList.size();
+		int idx = (int)(i / 10.0f * thicknessList.size());
 		idx -= 1;
 		idx = std::max(idx, 0);
 		thicknessPercentiles.append<float>(thicknessList[idx]);

@@ -6,8 +6,8 @@
 #include <math.h>
 #include <vector>
 
-#define xfloat .525731112119133606 
-#define zfloat .850650808352039932
+#define xfloat .525731112119133606f
+#define zfloat .850650808352039932f
 namespace drawing
 {
 	static GLfloat vdata[12][3] = {
@@ -50,7 +50,7 @@ namespace drawing
 		double scale;
 		std::vector<GLfloat> vertices;
 		std::vector<GLuint> indices;
-		VBOCube(double radius);
+		VBOCube(float radius);
 		VBOCube();
 
 		void init(float radius);

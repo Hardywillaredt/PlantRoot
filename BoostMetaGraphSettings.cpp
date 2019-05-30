@@ -109,7 +109,7 @@ namespace Roots
 		edgeOptions.maxColorCutoff = val;
 		if (edgeOptions.maxColorCutoff == edgeOptions.minColorCutoff)
 		{
-			edgeOptions.maxColorCutoff += 0.001;
+			edgeOptions.maxColorCutoff += 0.001f;
 		}
 
 		metaEdgeIter mei = boost::edges(*this);
@@ -302,7 +302,7 @@ namespace Roots
 		nodeOptions.maxColorCutoff = val;
 		if (nodeOptions.maxColorCutoff == nodeOptions.minColorCutoff)
 		{
-			nodeOptions.maxColorCutoff += 0.001;
+			nodeOptions.maxColorCutoff += 0.001f;
 		}
 		metaVertIter mvi = boost::vertices(*this);
 		for (; mvi.first != mvi.second; ++mvi)
@@ -468,14 +468,14 @@ namespace Roots
 
 		if (selectionVBO.size() > 0)
 		{
-			glLineWidth(edgeOptions.scale * edgeSelectionScaling);
-			glDrawElements(GL_LINES, selectionVBO.size(), GL_UNSIGNED_INT, &selectionVBO[0]);
+			glLineWidth(edgeOptions.scale * (float)edgeSelectionScaling);
+			glDrawElements(GL_LINES, (int)(selectionVBO.size()), (int)GL_UNSIGNED_INT, &selectionVBO[0]);
 		}
 
 		// edges on loop: thicker
 		if (edgeOptions.magnifyNonBridges)
 		{
-			glLineWidth(edgeOptions.scale * nonBridgeScaling);
+			glLineWidth(edgeOptions.scale * (float)nonBridgeScaling);
 		}
 		else
 		{
@@ -487,14 +487,14 @@ namespace Roots
 			// show loop
 			if (nonBridgeVBO.size() > 0)
 			{
-				glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
+				glDrawElements(GL_LINES, (int)(nonBridgeVBO.size()), (int)GL_UNSIGNED_INT, &nonBridgeVBO[0]);
 			}
 
 			// show non-loop
 			if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0)
 			{
 				glLineWidth(edgeOptions.scale);
-				glDrawElements(GL_LINES, bridgeVBO.size(), GL_UNSIGNED_INT, &bridgeVBO[0]);
+				glDrawElements(GL_LINES, (int)(bridgeVBO.size()), (int)GL_UNSIGNED_INT, &bridgeVBO[0]);
 			}
 		}
 		
@@ -502,23 +502,23 @@ namespace Roots
 		// only draw selected segment
 		if (selectedSegmentVBO.size() > 0 && showSelectedSegment)
 		{
-			glDrawElements(GL_LINES, selectedSegmentVBO.size(), GL_UNSIGNED_INT, &selectedSegmentVBO[0]);
+			glDrawElements(GL_LINES, (int)(selectedSegmentVBO.size()), (int)GL_UNSIGNED_INT, &selectedSegmentVBO[0]);
 		}
 
 		if (showTraitsOnly)
 		{
 			//glLineWidth(edgeOptions.scale * nonBridgeScaling);
-			glDrawElements(GL_LINES, stemVBO.size(), GL_UNSIGNED_INT, &stemVBO[0]);
+			glDrawElements(GL_LINES, (int)(stemVBO.size()), (int)GL_UNSIGNED_INT, &stemVBO[0]);
 		}
 
 		// only draw primary branches with color setting
 		if (PrimaryBranchesObj.size() > 0)
 		{
-			int colorTableSize = randomColorLoopUpTable.size();
+			int colorTableSize = (int)(randomColorLoopUpTable.size());
 			//glLineWidth(edgeOptions.scale * nonBridgeScaling);
 			if (showTraitsOnly && primaryBranchesVBO.size() > 0)
 			{
-				glDrawElements(GL_LINES, primaryBranchesVBO.size(), GL_UNSIGNED_INT, &primaryBranchesVBO[0]);
+				glDrawElements(GL_LINES, (int)(primaryBranchesVBO.size()), (int)GL_UNSIGNED_INT, &primaryBranchesVBO[0]);
 			}
 
 			if (showConfirmedPrimaryBranches && !showOnlyBranchesOfCurrentPrimaryNode)
@@ -645,7 +645,7 @@ namespace Roots
 			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
 			glColorPointer(3, GL_FLOAT, 0, testColor.data());
 			
-			glDrawElements(GL_LINES, autoStemVBO.size(), GL_UNSIGNED_INT, &autoStemVBO[0]);
+			glDrawElements(GL_LINES, (int)(autoStemVBO.size()), (int)GL_UNSIGNED_INT, &autoStemVBO[0]);
 
 			glEnable(GL_DEPTH_TEST);
 		}
@@ -705,11 +705,11 @@ namespace Roots
 
 			if (e->isSelected)
 			{
-				glLineWidth(edgeOptions.scale * edgeSelectionScaling);
+				glLineWidth(edgeOptions.scale * (float)edgeSelectionScaling);
 			}
 			else if (edgeOptions.magnifyNonBridges && !e->isBridge)
 			{
-				glLineWidth(edgeOptions.scale * nonBridgeScaling);
+				glLineWidth(edgeOptions.scale * (float)nonBridgeScaling);
 			}
 			else
 			{
@@ -717,7 +717,7 @@ namespace Roots
 			}
 			
 
-			glDrawElements(GL_LINES, e->indicesList.size(), GL_UNSIGNED_INT, &e->indicesList[0]);
+			glDrawElements(GL_LINES, (int)(e->indicesList.size()), (int)GL_UNSIGNED_INT, &e->indicesList[0]);
 		}
 
 		glDisableClientState(GL_VERTEX_ARRAY);
@@ -738,7 +738,7 @@ namespace Roots
 		for (; mvi.first != mvi.second; ++mvi)
 		{
 			BMetaNode *node = &operator[](*mvi.first);
-			int degree = boost::degree(*mvi.first, *this);
+			int degree = (int)(boost::degree(*mvi.first, *this));
 
 			if ((degree == 1 && !nodeOptions.showEndpoints) || (degree > 2 && !nodeOptions.showJunctions) || degree == 2)
 			{
@@ -825,7 +825,7 @@ namespace Roots
 				//isSelected = true; // all primary nodes : show bigger
 				if (isRandomColorizePrimaryNodes)
 				{
-					int index = std::distance(PrimaryNodes.begin(), it);
+					int index = (int)(std::distance(PrimaryNodes.begin(), it));
 					index = index % randomColorLoopUpTable.size();
 					GLfloat temp[4];
 					for (int i = 0; i < 4; ++i)
@@ -900,7 +900,7 @@ namespace Roots
 		for (; mvi.first != mvi.second; ++mvi)
 		{
 			BMetaNode *node = &operator[](*mvi.first);
-			int degree = boost::degree(*mvi.first, *this);
+			int degree = (int)(boost::degree(*mvi.first, *this));
 
 			if ((degree == 1 && !nodeOptions.showEndpoints) || (degree > 2 && !nodeOptions.showJunctions) || degree == 2)
 			{
@@ -920,7 +920,7 @@ namespace Roots
 				}
 			}
 
-			int num = (*mvi.first);
+			int num = (int)(*mvi.first);
 			nodeIdColor[0] = (num & 0x000000FF) >> 0;
 			nodeIdColor[1] = (num & 0x0000FF00) >> 8;
 			nodeIdColor[2] = (num & 0x00FF0000) >> 16;
@@ -1013,7 +1013,7 @@ namespace Roots
 
 		GLubyte vertIdColor[3];
 		
-		float scale = 0.5 * (nodeOptions.endpointScale + nodeOptions.junctionScale);
+		float scale = 0.5f * (nodeOptions.endpointScale + nodeOptions.junctionScale);
 		for (; mei.first != mei.second; ++mei)
 		{
 			BMetaEdge *e = &operator[](*mei.first);
@@ -1029,9 +1029,9 @@ namespace Roots
 			for (int i = 1; i < e->mVertices.size() - 1; ++i)
 			{
 				SkelVert v = e->mVertices[i];
-				vertIdColor[0] = (v & 0x000000FF) >> 0;
-				vertIdColor[1] = (v & 0x0000FF00) >> 8;
-				vertIdColor[2] = (v & 0x00FF0000) >> 16;
+				vertIdColor[0] = ((unsigned char)v & 0x000000FF) >> 0;
+				vertIdColor[1] = ((unsigned char)v & 0x0000FF00) >> 8;
+				vertIdColor[2] = ((unsigned char)v & 0x00FF0000) >> 16;
 				Point3d *p = &mSkeleton[v];
 				drawSphere.pickDraw(vertIdColor, p->x(), p->y(), p->z(), scale);
 			}

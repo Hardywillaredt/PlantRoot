@@ -142,7 +142,7 @@ namespace Roots
 		p[0] = skel->operator[](srcId)[0];
 		p[1] = skel->operator[](srcId)[1];
 		p[2] = skel->operator[](srcId)[2];
-		float degree = boost::degree(mSrcVert, *skel);
+		float degree = (float)(boost::degree(mSrcVert, *skel));
 
 		MinMaxStruct::minDegree = std::min(degree, MinMaxStruct::minDegree);
 		MinMaxStruct::maxDegree = std::max(degree, MinMaxStruct::maxDegree);
@@ -171,13 +171,13 @@ namespace Roots
 
 	void BMetaNode::updateColors(NodeVisualizationOptions options, bool isUpdateComponentColor)
 	{
-		int length = options.heatmap.size() - 1;
+		int length = (int)(options.heatmap.size() - 1);
 
 		//std::cout << "Update Colors node thickness " << nodeThickness << " node width " << nodeWidth << std::endl;
 
 		float thickRatio = ((nodeThickness - MinMaxStruct::minThickness) / (MinMaxStruct::maxThickness - MinMaxStruct::minThickness));
 		float widthRatio = ((nodeWidth - MinMaxStruct::minWidth) / (MinMaxStruct::maxWidth - MinMaxStruct::minWidth));
-		float degreeRatio = ((1.0*degree - MinMaxStruct::minDegree) / (MinMaxStruct::maxDegree - MinMaxStruct::minDegree));
+		float degreeRatio = ((1.0f * degree - MinMaxStruct::minDegree) / (MinMaxStruct::maxDegree - MinMaxStruct::minDegree));
 
 		thickRatio = (thickRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
 		widthRatio = (widthRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
@@ -190,9 +190,9 @@ namespace Roots
 		degreeRatio = std::min(degreeRatio, 1.0f);
 		degreeRatio = std::max(degreeRatio, 0.0f);
 
-		int thickpos = thickRatio * length;
-		int widthpos = widthRatio * length;
-		int degreepos = degreeRatio * length;
+		int thickpos = (int)(thickRatio * length);
+		int widthpos = (int)(widthRatio * length);
+		int degreepos = (int)(degreeRatio * length);
 
 		thickpos = std::min(thickpos, length);
 		widthpos = std::min(widthpos, length);
@@ -299,8 +299,8 @@ namespace Roots
 				weightedAvgThickness += p0->thickness() * length;
 				weightedAvgWidth += p0->width() * length;
 				skelEdgeLength += length;
-				indicesList.push_back(v0);
-				indicesList.push_back(v1);
+				indicesList.push_back((unsigned int)v0);
+				indicesList.push_back((unsigned int)v1);
 			}
 			else
 			{
@@ -351,8 +351,8 @@ namespace Roots
 
 	BMetaEdge BMetaEdge::join(BMetaEdge &other, BSkeleton *srcSkeleton)
 	{
-		int myMaxId = mVertices.size() - 1;
-		int otherMaxId = other.mVertices.size() - 1;
+		size_t myMaxId = mVertices.size() - 1;
+		size_t otherMaxId = other.mVertices.size() - 1;
 		std::vector<SkelVert> joinedVertices = {};
 		if (mVertices[myMaxId] != other.mVertices[0] &&
 			mVertices[myMaxId] != other.mVertices[otherMaxId] &&
@@ -367,33 +367,33 @@ namespace Roots
 		//of this
 		if (mVertices[myMaxId] == other.mVertices[0])
 		{
-			for (int i = 0; i < mVertices.size(); ++i)
+			for (size_t i = 0; i < mVertices.size(); ++i)
 			{
 				joinedVertices.push_back(mVertices[i]);
 			}
-			for (int i = 1; i < other.mVertices.size(); ++i)
+			for (size_t i = 1; i < other.mVertices.size(); ++i)
 			{
 				joinedVertices.push_back(other.mVertices[i]);
 			}
 		}
 		else if (mVertices[myMaxId] == other.mVertices[otherMaxId])
 		{
-			for (int i = 0; i < mVertices.size(); ++i)
+			for (size_t i = 0; i < mVertices.size(); ++i)
 			{
 				joinedVertices.push_back(mVertices[i]);
 			}
-			for (int i = otherMaxId - 1; i >= 0; --i)
+			for (size_t i = otherMaxId - 1; i >= 0; --i)
 			{
 				joinedVertices.push_back(other.mVertices[i]);
 			}
 		}
 		else if (mVertices[0] == other.mVertices[0])
 		{
-			for (int i = myMaxId; i >= 0; --i)
+			for (size_t i = myMaxId; i >= 0; --i)
 			{
 				joinedVertices.push_back(mVertices[i]);
 			}
-			for (int i = 1; i <= otherMaxId; ++i)
+			for (size_t i = 1; i <= otherMaxId; ++i)
 			{
 				joinedVertices.push_back(other.mVertices[i]);
 			}
@@ -416,7 +416,7 @@ namespace Roots
 		std::vector<SkelVert> leftEdge = {}, rightEdge = {};
 		std::vector<GLuint> leftEdgeIndices = {}, rightEdgeIndices = {};
 		bool onLeft = true;
-		for (int i = 0; i < mVertices.size(); ++i)
+		for (size_t i = 0; i < mVertices.size(); ++i)
 		{
 
 			if (mVertices[i] == toSplitOn)
@@ -482,7 +482,7 @@ namespace Roots
 
 	void BMetaEdge::updateColors(EdgeVisualizationOptions options, std::vector<std::vector<GLfloat>> &vertexColors, BSkeleton *srcSkeleton)
 	{
-		int length = options.heatmap.size() - 1;
+		int length = (int)(options.heatmap.size() - 1);
 
 		localThicknessColors.resize(mVertices.size() * 3);
 		localWidthColors.resize(mVertices.size() * 3);
@@ -501,7 +501,7 @@ namespace Roots
 
 			thickRatio = (thickRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
 			widthRatio = (widthRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
-			ratioRatio = 1.0 - (ratioRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
+			ratioRatio = 1.0f - (ratioRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
 
 			thickRatio = std::min(1.0f, thickRatio);
 			thickRatio = std::max(0.0f, thickRatio);
@@ -513,9 +513,9 @@ namespace Roots
 			ratioRatio = std::max(0.0f, ratioRatio);
 
 
-			int thickpos = thickRatio * length;
-			int widthpos = widthRatio * length;
-			int ratiopos = ratioRatio * length;
+			int thickpos = (int)(thickRatio * length);
+			int widthpos = (int)(widthRatio * length);
+			int ratiopos = (int)(ratioRatio * length);
 
 			if (thickpos > length || widthpos > length || ratiopos > length)
 			{
@@ -691,7 +691,7 @@ namespace Roots
 	{
 		//std::cout << "Calling hightLight" << std::endl;
 		//std::cout << "edge count " << mEdges.size() << std::endl;
-		for (int i = 0; i < mVertices.size(); ++i)
+		for (size_t i = 0; i < mVertices.size(); ++i)
 		{
 			for (int coloringType = 0; coloringType < 4; ++coloringType)
 			{
@@ -713,7 +713,7 @@ namespace Roots
 	void BMetaEdge::updateGraphColors(std::vector<std::vector<GLfloat>> &vertexColors)
 	{
 		int maxIndex = 0;
-		for (int i = 0; i < mVertices.size(); ++i)
+		for (size_t i = 0; i < mVertices.size(); ++i)
 		{
 			maxIndex = std::max(maxIndex, (int)mVertices[i]);
 		}
@@ -725,7 +725,7 @@ namespace Roots
 			}
 		}
 
-		for (int i = 0; i < mVertices.size(); ++i)
+		for (size_t i = 0; i < mVertices.size(); ++i)
 		{
 			for (int c = 0; c < 3; ++c)
 			{
@@ -1199,7 +1199,7 @@ namespace Roots
 		}
 
 		skelVertIter svi = boost::vertices(mSkeleton);
-		float thickness = 0.00001, width = 0.00001, ratio = 0;
+		float thickness = 0.00001f, width = 0.00001f, ratio = 0.0f;
 		for (; svi.first != svi.second; ++svi)
 		{
 			Point3d *p = &mSkeleton[*svi.first];
@@ -1901,7 +1901,7 @@ namespace Roots
 			//find all the edge data associated with the original set of vertices
 			for (int i = 0; i < edge.mVertices.size() - 1; ++i)
 			{
-				SkelEdge e = srcSkel->getEdge(edge.mVertices[i], edge.mVertices[i + 1], exists);
+				SkelEdge e = srcSkel->getEdge((int)(edge.mVertices[i]), (int)(edge.mVertices[i + 1]), exists);
 				if (exists)
 				{
 					srcEdges.push_back(e);
@@ -1911,7 +1911,7 @@ namespace Roots
 			//add edges between all of the new added vertices containing the info from the original edge data
 			for (int i = 0; i < edge.mVertices.size() - 1; ++i)
 			{
-				srcSkel->addEdge(addedVerts[i], addedVerts[i + 1]);
+				srcSkel->addEdge((int)(addedVerts[i]), (int)(addedVerts[i + 1]));
 			}
 		}
 
@@ -2143,7 +2143,7 @@ namespace Roots
 		//will have the highest priorty (iterate backwards on allsizes)
 		std::map<int, int> componentPriorityMap = std::map<int, int>();
 		int priority = 0;
-		for (int i = allSizes.size() - 1; i >= 0; --i)
+		for (size_t i = allSizes.size() - 1; i >= 0; --i)
 		{
 			std::cout << "i = " << i << std::endl;
 			for (int component = 0; component < mComponentSizeMap.size(); ++component)
@@ -2162,13 +2162,13 @@ namespace Roots
 		}
 
 		//remap the existing component map to the prioritized component map
-		for (int i = 0; i < m_vertices.size(); ++i)
+		for (size_t i = 0; i < m_vertices.size(); ++i)
 		{
 			mComponentMap[i] = componentPriorityMap[mComponentMap[i]];
 		}
 		//update the component size map to match the sorted sizes of the priority map
 		std::cout << "Component sizes " << std::endl;
-		for (int i = 0, j = allSizes.size() - 1; i < allSizes.size(), j >= 0; ++i, --j)
+		for (size_t i = 0, j = allSizes.size() - 1; i < allSizes.size(), j >= 0; ++i, --j)
 		{
 			mComponentSizeMap[i] = allSizes[j];
 			std::cout << i << " " << mComponentSizeMap[i] << std::endl;
@@ -2192,8 +2192,8 @@ namespace Roots
 			operator[](*mei.first).connectedComponent = component;
 			operator[](*mei.first).updateComponentColor(vertexColors);
 		}
-		MinMaxStruct::minComponent = 0;
-		MinMaxStruct::maxComponent = numComponents - 1;
+		MinMaxStruct::minComponent = 0.0f;
+		MinMaxStruct::maxComponent = numComponents - 1.0f;
 		std::cout << "updated node component" << std::endl;
 
 		componentBounds = std::vector<BoundingBox>(numComponents, BoundingBox());
@@ -2269,7 +2269,7 @@ namespace Roots
 	int BMetaGraph::GetNumEdgesToBreak()
 	{
 		FindMinimumSpanningTree();
-		return m_edges.size() - mMinimumSpanningTree.size();
+		return (int)(m_edges.size() - mMinimumSpanningTree.size());
 	}
 
 
@@ -2480,9 +2480,9 @@ namespace Roots
 			float deltaX = goTowards[0] - from[0];
 			float deltaY = goTowards[1] - from[1];
 			float deltaZ = goTowards[2] - from[2];
-			shiftX += deltaX * 0.75;
-			shiftY += deltaY * 0.75;
-			shiftZ += deltaZ * 0.75;
+			shiftX += deltaX * 0.75f;
+			shiftY += deltaY * 0.75f;
+			shiftZ += deltaZ * 0.75f;
 		}
 
 		Point3d shift = Point3d(shiftX, shiftY, shiftZ, 0, 0);
@@ -2501,7 +2501,7 @@ namespace Roots
 
 		for (int i = 0; i < newVertices.size() - 1; ++i)
 		{
-			SkelEdge added = mSkeleton.addEdge(newVertices[i], newVertices[i + 1]);
+			SkelEdge added = mSkeleton.addEdge((int)(newVertices[i]), (int)(newVertices[i + 1]));
 		}
 
 		MetaV v0 = addNode(newVertices[0], &mSkeleton);
@@ -2547,12 +2547,12 @@ namespace Roots
 			if (vertNodeMap[originalVerts[0]] == splitNode)
 			{
 				originalVerts[0] = operator[](originalToDuplicateMap[splitNode]).mSrcVert;
-				mSkeleton.addEdge(originalVerts[0], originalVerts[1]);
+				mSkeleton.addEdge((int)(originalVerts[0]), (int)(originalVerts[1]));
 			}
 			else
 			{
 				originalVerts[originalVerts.size() - 1] = operator[](originalToDuplicateMap[splitNode]).mSrcVert;
-				mSkeleton.addEdge(originalVerts[originalVerts.size() - 1], originalVerts[originalVerts.size() - 2]);
+				mSkeleton.addEdge((int)(originalVerts[originalVerts.size() - 1]), (int)(originalVerts[originalVerts.size() - 2]));
 			}
 
 
@@ -2577,7 +2577,7 @@ namespace Roots
 
 		findAndLabelConnectedComponents();
 
-		for (int i = orderedNodes.size() - 1; i >= 0; --i)
+		for (size_t i = orderedNodes.size() - 1; i >= 0; --i)
 		{
 			BridgeNode(orderedNodes[i]);
 		}
@@ -2828,16 +2828,16 @@ namespace Roots
 		
 		// minimum spainning tree - Kruskal
 		int mst_wt = 0; // Initialize result
-		DisjointSets ds(boost::num_vertices(mSkeleton));
+		DisjointSets ds((int)(boost::num_vertices(mSkeleton)));
 		std::vector<SkelEdge> stemMinimumSpanningTree;
 
 		for (int i = 0; i < selectedEdge.size(); ++i)
 		{
 			//std::cout << " i " << i << std::endl;
 			//std::cout << " selectedEdge[i].m_source " << selectedEdge[i].m_source << std::endl;
-			int u = selectedEdge[i].m_source;
+			int u = (int)(selectedEdge[i].m_source);
 			//std::cout << " u " << u << std::endl;
-			int v = selectedEdge[i].m_target;
+			int v = (int)(selectedEdge[i].m_target);
 			//std::cout << " v " << v << std::endl;
 
 			int set_u = ds.find(u);
@@ -2850,7 +2850,7 @@ namespace Roots
 			if (set_u != set_v)
 			{
 				//std::cout << u << " - " << v << std::endl;	// Current edge will be in the MST, so print it 
-				mst_wt += getEdgeEuclidLength(selectedEdge[i], &mSkeleton);	// Update MST weight 
+				mst_wt += (int)(getEdgeEuclidLength(selectedEdge[i], &mSkeleton));	// Update MST weight 
 				ds.merge(set_u, set_v);		// Merge two sets 
 				stemMinimumSpanningTree.push_back(selectedEdge[i]);
 			}
@@ -2887,10 +2887,10 @@ namespace Roots
 		for (int i = 0; i < mstNodeList.size(); ++i)	// add vertices to mst graph
 		{
 			//std::cout << "i " << i << std::endl;
-			int vert = boost::add_vertex(mstGraph);
+			int vert = (int)(boost::add_vertex(mstGraph));
 			//std::cout << "vert " << vert << std::endl;
 			//vert = i;	// mstNodeList[i]
-			int skelV = mstNodeList[i];
+			int skelV = (int)(mstNodeList[i]);
 			//std::cout << "skelV " << skelV << std::endl;
 			SkelVertMSTMap[skelV] = vert;
 			MSTSkelVertMap[vert] = skelV;
@@ -2899,8 +2899,8 @@ namespace Roots
 		{
 			SkelEdge e;
 			bool success;
-			int v0 = stemMinimumSpanningTree[i].m_source;
-			int v1 = stemMinimumSpanningTree[i].m_target;
+			int v0 = (int)(stemMinimumSpanningTree[i].m_source);
+			int v1 = (int)(stemMinimumSpanningTree[i].m_target);
 			boost::tie(e, success) = boost::add_edge(SkelVertMSTMap[v0], SkelVertMSTMap[v1], mstGraph);
 		}
 		std::cout << "vertice size " << boost::num_vertices(mstGraph) << std::endl;
@@ -2945,20 +2945,20 @@ namespace Roots
 						burnable = true;
 						//std::cout << " ei->m_source burned " << ei->m_source << std::endl;
 						skelVertBTmap[ei->m_source] = burnRound;
-						burnTimeVertMap[burnRound].push_back(ei->m_source);
+						burnTimeVertMap[burnRound].push_back((int)(ei->m_source));
 					}
 					if (boost::degree(ei->m_target, burningGraph) == 1)
 					{
 						burnable = true;
 						//std::cout << " ei->m_target burned " << ei->m_target << std::endl;
 						skelVertBTmap[ei->m_target] = burnRound;
-						burnTimeVertMap[burnRound].push_back(ei->m_target);
+						burnTimeVertMap[burnRound].push_back((int)(ei->m_target));
 					}
 					burnedEdges.push_back(e);
 				}
 				
 			}
-			count += burnedEdges.size();
+			count += (int)(burnedEdges.size());
 			//std::cout << "burned edges " << count << std::endl; //debug
 
 			++burnRound;
@@ -3022,7 +3022,7 @@ namespace Roots
 				{
 					//MetaV leadNode;
 					//std::cout << " * " << std::endl;
-					int v = *adjIt;
+					int v = (int)(*adjIt);
 
 					bool exists;
 					subE e;
@@ -3035,11 +3035,11 @@ namespace Roots
 					int nextSeed = -1;
 					if (skelVertBTmap[e.m_source] == burnRound - 1)
 					{
-						nextSeed = e.m_source;
+						nextSeed = (int)e.m_source;
 					}
 					if (skelVertBTmap[e.m_target] == burnRound - 1)
 					{
-						nextSeed = e.m_target;
+						nextSeed = (int)e.m_target;
 					}
 					if (nextSeed != -1)
 					{
@@ -3073,8 +3073,8 @@ namespace Roots
 		{
 			SkelVert v0 = MSTSkelVertMap[e.m_source];
 			SkelVert v1 = MSTSkelVertMap[e.m_target];
-			autoStemVBO.push_back(v0);
-			autoStemVBO.push_back(v1);
+			autoStemVBO.push_back((unsigned int)v0);
+			autoStemVBO.push_back((unsigned int)v1);
 
 			bool exists;
 			SkelEdge se;
@@ -3350,7 +3350,7 @@ namespace Roots
 				float denominator = 0;
 				for (float neighbour : neighbours)
 				{
-					float weight = gaussian_kernal(std::abs(neighbour - X[j]), kernel_bandwidth);
+					float weight = gaussian_kernal(std::abs(neighbour - X[j]), (int)kernel_bandwidth);
 					numerator += (weight * neighbour);
 					denominator += weight;
 				}
@@ -3378,7 +3378,7 @@ namespace Roots
 			std::cout << "X[" << i << "] " << X[i] << std::endl;
 			std::cout << "lower_bound " << val << std::endl;
 			
-			int pos = low - positions.begin();
+			int pos = (int)(low - positions.begin());
 			std::cout << "pos " << pos << std::endl;
 			std::cout << "positions[pos] " << positions[pos] << std::endl;
 			if (pos > 0 && std::abs(X[i] - positions[pos - 1]) < std::abs(X[i] - positions[pos]))
@@ -3430,7 +3430,7 @@ namespace Roots
 	float BMetaGraph::gaussian_kernal(float distance, int bandwidth)
 	{
 		float val;
-		val = (1 / (bandwidth*std::sqrt(2 * 3.14159))) * std::exp(-0.5*std::pow(distance / bandwidth, 2));
+		val = (1.0f / (bandwidth*std::sqrt(2.0f * 3.14159f))) * std::exp(-0.5f * std::pow(distance / bandwidth, 2.0f));
 		return val;
 	}
 
@@ -3563,7 +3563,7 @@ namespace Roots
 
 		MetaV v = PrimaryBranchSelection;
 		std::cout << "size " << PrimaryBranchesObj.size() << std::endl;
-		for (int i = PrimaryBranchesObj.size()-1; i >= 0; --i)
+		for (size_t i = PrimaryBranchesObj.size() - 1; i >= 0; --i)
 		{
 			std::vector<MetaE> edges = PrimaryBranchesObj[i].metaEdges;
 			if (PrimaryBranchesObj[i].primaryNodeIndex == CurrentPrimaryNode)
@@ -4078,7 +4078,7 @@ namespace Roots
 			if (!visited[v])
 			{
 				parent[v] = u;
-				bridgeUtil(v, visited, disc, low, parent, bridgeNodes);
+				bridgeUtil((int)v, visited, disc, low, parent, bridgeNodes);
 
 				low[u] = std::min(low[u], low[v]);
 

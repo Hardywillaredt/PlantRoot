@@ -8,11 +8,11 @@ Mesh::Mesh()
 {
 	vertices = {};
 	faces = {};
-	f_factor = 0.75;
-	mColor[0] = 0.0;
-	mColor[1] = 0.0;
-	mColor[2] = 1.0;
-	mColor[3] = 0.3;
+	f_factor = 0.75f;
+	mColor[0] = 0.0f;
+	mColor[1] = 0.0f;
+	mColor[2] = 1.0f;
+	mColor[3] = 0.3f;
 }
 
 void Mesh::render()
@@ -29,35 +29,35 @@ void Mesh::render()
 	glDisable(GL_CULL_FACE);
 	glDepthFunc(GL_LESS);
 	glColor4f(mColor[0], mColor[1], mColor[2], 0);
-	glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, &faces[0]);
+	glDrawElements(GL_TRIANGLES, (int)(faces.size()), GL_UNSIGNED_INT, &faces[0]);
 
 	// render with alpha = f*alpha
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_ALWAYS);
 	glColor4f(mColor[0], mColor[1], mColor[2], f_factor*alpha);
-	glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, &faces[0]);
+	glDrawElements(GL_TRIANGLES, (int)(faces.size()), GL_UNSIGNED_INT, &faces[0]);
 
 
 	// render with alpha = (alpha-f*alpha)/(1.0-f*alpha)
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_LEQUAL);
-	glColor4f(mColor[0], mColor[1], mColor[2], (alpha - f_factor*alpha) / (1.0 - f_factor*alpha));
-	glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, &faces[0]);
+	glColor4f(mColor[0], mColor[1], mColor[2], (alpha - f_factor*alpha) / (1.0f - f_factor*alpha));
+	glDrawElements(GL_TRIANGLES, (int)(faces.size()), GL_UNSIGNED_INT, &faces[0]);
 
 	// render with alpha = f*alpha
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glDepthFunc(GL_ALWAYS);
-	glColor4f(mColor[0], mColor[1], mColor[2], alpha*f_factor);
-	glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, &faces[0]);
+	glColor4f(mColor[0], mColor[1], mColor[2], alpha * f_factor);
+	glDrawElements(GL_TRIANGLES, (int)(faces.size()), GL_UNSIGNED_INT, &faces[0]);
 
 	// render with alpha = (alpha-f*alpha)/(1.0-f*alpha)
 	glDisable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
-	glColor4f(mColor[0], mColor[1], mColor[2], (alpha - f_factor*alpha) / (1.0 - f_factor*alpha));
-	glDrawElements(GL_TRIANGLES, faces.size(), GL_UNSIGNED_INT, &faces[0]);
+	glColor4f(mColor[0], mColor[1], mColor[2], (alpha - f_factor * alpha) / (1.0f - f_factor * alpha));
+	glDrawElements(GL_TRIANGLES, (int)(faces.size()), GL_UNSIGNED_INT, &faces[0]);
 
 
 	glEnable(GL_CULL_FACE);
