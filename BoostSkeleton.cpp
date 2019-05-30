@@ -1,7 +1,5 @@
 #include "BoostSkeleton.h"
 
-
-
 namespace Roots
 {
 	std::string BSkeleton::beginSkeletonString = "begin_skeleton";
@@ -48,7 +46,6 @@ namespace Roots
 		}
 		else if (boost::iequals(line, beginPlyString))
 		{
-			//beginPlyString = "ply"
 			result = loadDanPly(lines, startingLine);
 		}
 		else
@@ -56,12 +53,7 @@ namespace Roots
 			std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
 			result = loadPlyStyleLines(lines, startingLine);
 		}
-
-		/*for (skelEdgeIter sei = boost::edges(*this); sei.first != sei.second; ++sei)
-		{
-			std::cout << "Line between " << operator[](sei.first->m_source) << " and " << operator[](sei.first->m_target) << std::endl;
-		}*/
-
+		
 		findBounds();
 		findBoundingSphere();
 		return result;
@@ -101,19 +93,15 @@ namespace Roots
 		++lineOn;
 		if (words.size() < 2)
 		{
-			//std::cout << "The header information did not contain enough info. ";
-			//std::cout << "Please ensure file indicates at least number of vertices and edges" << std::endl;
+
 		}
 		if (words.size() >= 2)
 		{
 			numVertices = boost::lexical_cast<int>(words[0]);
-			//std::cout << "Number of vertices " << numVertices << std::endl;
 			numEdges = boost::lexical_cast<int>(words[1]);
-			//std::cout << "Number of edges " << numEdges << std::endl;
 		}
 		if (words.size() == 3)
 		{
-			//std::cout << "Faces listed as an input, but no behavior is currently defined for them" << std::endl;
 			numFaces = boost::lexical_cast<int>(words[2]);
 		}
 		
@@ -260,7 +248,6 @@ namespace Roots
 		}
 		if (lineOn >= lines.size())
 		{
-			//std::cout << "End of file reached before end of header, check file.  It is missing '" << endHeaderString << "' somewhere." << std::endl;
 			return lineOn;
 		}
 
@@ -283,9 +270,6 @@ namespace Roots
 			}
 			else
 			{
-				//another kind of BSkeleton attribute (eg a face?), currently undefined behavior
-				//std::cout << "The described Skeleton element " << headerWords[0] << " is not defined in this implementation." << std::endl;
-				//std::cout << "No action will be taken for this element" << std::endl;
 			}
 		}
 		return lineOn;
@@ -313,7 +297,6 @@ namespace Roots
 		std::cout << "Beginning to load edges " << std::endl;
 		std::cout << "first line is : " << lines[lineOn] << std::endl;
 		int v0, v1;
-		//float attributedata[NumAttributes];
 		std::vector<std::string> words;
 		for (int i = 0; i < numEdges && lineOn < lines.size(); ++i, ++lineOn)
 		{
@@ -327,7 +310,6 @@ namespace Roots
 				addEdge(v0, v1);
 			}
 		}
-		//std::cout << "Number of edges added " << i - 1 << std::endl;
 	}
 
 	void BSkeleton::loadFaces(std::vector<std::string> &lines, int &lineOn, int numFaces)
@@ -375,7 +357,7 @@ namespace Roots
 		SkelVert v;
 		v = boost::add_vertex(*this);
 		operator[](v) = pointLocation;
-		operator[](v).id = (int)v;
+		operator[](v).id = v;
 		mBoundsFound = false;
 		return v;
 	}
@@ -401,7 +383,7 @@ namespace Roots
 		}
 		else
 		{
-			float big = (float)99999999999;
+			float big = 99999999999;
 			mMinX = big;
 			mMaxX = -big;
 			mMinY = big;
@@ -439,8 +421,7 @@ namespace Roots
 			sum = sum + operator[](*vIter.first);
 		}
 
-		sum = sum / (float)m_vertices.size();
-		//Point3d sum = minPoint + maxPoint;
+		sum = sum / m_vertices.size();
 		mCenter = sum;
 		originalCenter = mCenter;
 		mRadius = (maxPoint - mCenter).mag();
@@ -460,17 +441,6 @@ namespace Roots
 		}
 		updateGLVertices();
 		return;
-
-		//BSkeleton result = *this;
-		//skelVertIter resIter = boost::vertices(result);
-
-		//while (resIter.first != resIter.second)
-		//{
-		//	result[*resIter.first] += offset;
-		//	++resIter;
-		//}
-		//result.updateGLVertices();
-		//return result;
 	}
 
 	SkelEdge BSkeleton::getEdge(int v0, int v1, bool &exists)
@@ -508,7 +478,7 @@ namespace Roots
 		skelVertIter vi = boost::vertices(*this);
 		while (vi.first != vi.second)
 		{
-			int deg = (int)(boost::degree(*vi.first, *this));
+			int deg = boost::degree(*vi.first, *this);
 			if (deg != 2 && deg != 0)
 			{
 				result.push_back(*vi.first);
@@ -536,7 +506,6 @@ PySkeleton::PySkeleton()
 
 PySkeleton::PySkeleton(Roots::BSkeleton *srcSkel)
 {
-	//std::cout << "setting skeleton to own skeleton " << std::endl;
 	mSkeleton = srcSkel;
 	reload();
 }
@@ -567,36 +536,19 @@ void PySkeleton::reload()
 	std::vector<float> thicknessList = {};
 	std::vector<float> widthList = {};
 	std::vector<float> ratioList = {};
-	//std::cout << "reloading" << std::endl;
+
 	if (mSkeleton == nullptr)
 	{
-		//std::cout << "Skeleton is nullptr" << std::endl;
 		return;
 	}
 	
 	for (skelVertIter svi = boost::vertices(*mSkeleton); svi.first != svi.second; ++svi)
 	{
 		Point3d vertexAdded = mSkeleton->operator[](*svi.first);
-		//std::cout << "Vertex reloaded " << vertexAdded << std::endl;
 		mVertexList.append<Point3d>(vertexAdded);
 	}
 	for (skelEdgeIter sei = boost::edges(*mSkeleton); sei.first != sei.second; ++sei)
 	{
-		//Roots::RootAttributes rootAdded = mSkeleton->operator[](*sei.first);
-		//minThickness = std::min(rootAdded.thickness, minThickness);
-		//maxThickness = std::max(rootAdded.thickness, maxThickness);
-		//thicknessList.push_back(rootAdded.thickness);
-
-		//minWidth = std::min(rootAdded.width, minWidth);
-		//maxWidth = std::max(rootAdded.width, maxWidth);
-		//widthList.push_back(rootAdded.width);
-
-		//minRatio = std::min(rootAdded.thickness / rootAdded.width, minRatio);
-		//maxRatio = std::max(rootAdded.thickness / rootAdded.width, maxRatio);
-		//ratioList.push_back(rootAdded.thickness / rootAdded.width);
-
-		//std::cout << "Root reloaded " << rootAdded << std::endl;
-		//mEdgeList.append<Roots::RootAttributes>(rootAdded);
 	}
 
 	std::sort(thicknessList.begin(), thicknessList.end());
@@ -605,7 +557,8 @@ void PySkeleton::reload()
 
 	for (int i = 0; i < 11; ++i)
 	{
-		int idx = (int)(i / 10.0f * thicknessList.size());
+		float fi = i;
+		int idx = (fi / 10.0) * thicknessList.size();
 		idx -= 1;
 		idx = std::max(idx, 0);
 		thicknessPercentiles.append<float>(thicknessList[idx]);

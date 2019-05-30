@@ -13,7 +13,7 @@ namespace drawing
 	
 	int GetVertexBotRowCount(int subdivisions)
 	{
-		return (int)pow(2, subdivisions) + 1;
+		return pow(2, subdivisions)+1;
 	}
 
 	int GetVertexRowCount(int row, int subdivisions)
@@ -52,7 +52,7 @@ void drawing::VBOSphere::init(double radius, int numSubdivisions)
 	{
 		int vertexStart = numVerticesPerFace * side * 3;
 		int indexStart = numIndicesPerFace * side;
-		CreateSubdividedIcoFace(side, subdivisions, (float)radius, &vertices[vertexStart], &normals[vertexStart], &indices[0], indexStart, indices);
+		CreateSubdividedIcoFace(side, subdivisions, radius, &vertices[vertexStart], &normals[vertexStart], &indices[0], indexStart, indices);
 	}
 	
 }
@@ -75,7 +75,7 @@ void drawing::VBOSphere::draw()
 	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
 	glNormalPointer(GL_FLOAT, 0, &normals[0]);
 
-	glDrawElements(GL_TRIANGLES, (int)(indices.size()), GL_UNSIGNED_INT, &indices[0]);
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, &indices[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_NORMAL_ARRAY);
@@ -93,7 +93,7 @@ void drawing::VBOSphere::fancierDraw(GLfloat* color, float x, float y, float z, 
 	glTranslatef(x, y, z);
 	glScalef(scale, scale, scale);
 	draw();
-	glScalef(1.0f / scale, 1.0f / scale, 1.0f / scale);
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);
 }
 
@@ -106,16 +106,16 @@ void drawing::VBOSphere::pickDraw(GLubyte *color, float x, float y, float z, flo
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
 
-	glDrawElements(GL_TRIANGLES, (int)(indices.size()), GL_UNSIGNED_INT, &indices[0]);
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, &indices[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
-	glScalef(1.0f / scale, 1.0f / scale, 1.0f / scale);
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);
 	
 }
 
-drawing::VBOCube::VBOCube(float radius)
+drawing::VBOCube::VBOCube(double radius)
 {
 	init(radius);
 }
@@ -161,12 +161,12 @@ void drawing::VBOCube::fancierDraw(GLfloat* color, float x, float y, float z, fl
 	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
 	glNormalPointer(GL_FLOAT, 0, &vertices[0]);
 
-	glDrawElements(GL_QUADS, (int)(indices.size()), GL_UNSIGNED_INT, &indices[0]);
+	glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_INT, &indices[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_NORMAL_ARRAY);
 
-	glScalef(1.0f / scale, 1.0f / scale, 1.0f / scale);
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);
 }
 
@@ -179,22 +179,22 @@ void drawing::VBOCube::pickDraw(GLubyte* color, float x, float y, float z, float
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
 
-	glDrawElements(GL_QUADS, (int)(indices.size()), GL_UNSIGNED_INT, &indices[0]);
+	glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_INT, &indices[0]);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 
-	glScalef(1.0f / scale, 1.0f / scale, 1.0f / scale);
+	glScalef(1.0 / scale, 1.0 / scale, 1.0 / scale);
 	glTranslatef(-x, -y, -z);
 }
 
 int drawing::GetNumVerticesForFace(int subdivisions)
 {
-	return (int)(pow(2, 2 * subdivisions - 1) + pow(2, subdivisions) + pow(2, subdivisions - 1) + 1);
+	return pow(2, 2 * subdivisions - 1) + pow(2, subdivisions) + pow(2, subdivisions - 1) + 1;
 }
 
 int drawing::GetNumIndicesForFace(int subdivisions)
 {
-	return (int)(pow(4, subdivisions) * 3);
+	return pow(4, subdivisions) * 3;
 }
 
 void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, GLfloat *vertexStart, GLfloat *normalStart, GLuint *indexStart, int indexOffset, std::vector<GLuint> &indices)
@@ -210,19 +210,19 @@ void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, 
 	GLfloat bcBot[3];
 
 	GLuint triangleRowCount = (GLuint)pow(2, subdivisions);
-	float fTriangleRowCount = (float)triangleRowCount;
+	float fTriangleRowCount = triangleRowCount;
 	GLuint localIndex = 0;
 	GLuint globalVertexIndex = GetNumVerticesForFace(subdivisions) * side;
 	indexStart = indexStart + indexOffset;
-	for (unsigned int triangleRow = 0; triangleRow < triangleRowCount; ++triangleRow)
+	for (int triangleRow = 0; triangleRow < triangleRowCount; ++triangleRow)
 	{
-		float fTriangleRow = (float)triangleRow;
+		float fTriangleRow = triangleRow;
 		
 		float abFracBot = (fTriangleRowCount - fTriangleRow) / fTriangleRowCount;
-		float cFracBot = 1.0f - abFracBot;
+		float cFracBot = 1.0 - abFracBot;
 
 		float abFracTop = (fTriangleRowCount - (fTriangleRow + 1)) / fTriangleRowCount;
-		float cFracTop = 1.0f - abFracTop;
+		float cFracTop = 1.0 - abFracTop;
 
 		for (int i = 0; i < 3; ++i)
 		{
@@ -249,10 +249,10 @@ void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, 
 
 		GLfloat *toNormalize;
 
-		for (unsigned int botRowVertexI = botRowVertexStartI; botRowVertexI < botRowVertexEndI; ++botRowVertexI)
+		for (int botRowVertexI = botRowVertexStartI; botRowVertexI < botRowVertexEndI; ++botRowVertexI)
 		{
 			float aFrac = ((float)(botRowVertexEndI - botRowVertexI - 1)) / (botRowVertexCount - 1);
-			float bFrac = 1.0f - aFrac;
+			float bFrac = 1.0 - aFrac;
 			for (int dim = 0; dim < 3; ++dim)
 			{
 				vertexStart[botRowVertexI * 3 + dim] = acBot[dim] * aFrac + bcBot[dim] * bFrac;
@@ -265,18 +265,18 @@ void drawing::CreateSubdividedIcoFace(int side, int subdivisions, float radius, 
 				vertexStart[botRowVertexI * 3 + dim] *= radius;
 			}
 		}
-		for (unsigned int topRowVertexI = topRowVertexStartI; topRowVertexI < topRowVertexEndI; ++topRowVertexI)
+		for (int topRowVertexI = topRowVertexStartI; topRowVertexI < topRowVertexEndI; ++topRowVertexI)
 		{
 			float aFrac, bFrac;
 			if (topRowVertexCount == 1)
 			{
-				aFrac = 1.0f;
-				bFrac = 0.0f;
+				aFrac = 1.0;
+				bFrac = 0.0;
 			}
 			else
 			{
 				aFrac = ((float)(topRowVertexEndI - topRowVertexI - 1)) / (topRowVertexCount - 1);
-				bFrac = 1.0f - aFrac;
+				bFrac = 1.0 - aFrac;
 			}
 			for (int dim = 0; dim < 3; ++dim)
 			{

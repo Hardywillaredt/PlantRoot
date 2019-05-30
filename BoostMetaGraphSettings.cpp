@@ -6,12 +6,10 @@ namespace Roots
 	//////////////////////////////////////////////EDGES////////////////////////////////////////////
 	EdgeVisualizationOptions::EdgeVisualizationOptions()
 	{
-
 		show = true;
 		scale = 1.0;
 		magnifyNonBridges = false;
 		showOnlyNonBridges = false;
-
 		minColorCutoff = 0.0;
 		maxColorCutoff = 1.0;
 		colorization = ColorizationOptions::ByThickness;
@@ -55,6 +53,7 @@ namespace Roots
 	void BMetaGraph::assignEdgeHeatMap(boost::python::list heatmap)
 	{
 		edgeOptions.heatmap = {};
+		std::cout << "boost::python::len(heatmap) is " << boost::python::len(heatmap) << std::endl;
 		for (int i = 0; i < boost::python::len(heatmap); ++i)
 		{
 			std::vector<GLfloat> vectorColor = {};
@@ -66,7 +65,7 @@ namespace Roots
 			edgeOptions.heatmap.push_back(vectorColor);
 		}
 		metaEdgeIter mei = boost::edges(*this);
-		for (; mei.first != mei.second; ++mei)
+		for (;mei.first != mei.second; ++mei)
 		{
 			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
@@ -109,7 +108,7 @@ namespace Roots
 		edgeOptions.maxColorCutoff = val;
 		if (edgeOptions.maxColorCutoff == edgeOptions.minColorCutoff)
 		{
-			edgeOptions.maxColorCutoff += 0.001f;
+			edgeOptions.maxColorCutoff += 0.001;
 		}
 
 		metaEdgeIter mei = boost::edges(*this);
@@ -302,7 +301,7 @@ namespace Roots
 		nodeOptions.maxColorCutoff = val;
 		if (nodeOptions.maxColorCutoff == nodeOptions.minColorCutoff)
 		{
-			nodeOptions.maxColorCutoff += 0.001f;
+			nodeOptions.maxColorCutoff += 0.001;
 		}
 		metaVertIter mvi = boost::vertices(*this);
 		for (; mvi.first != mvi.second; ++mvi)
@@ -423,12 +422,6 @@ namespace Roots
 	void BMetaGraph::setSegmentHorizontalSliderRadius(float val)
 	{
 		SegmentHorizontalRadius = val;
-		/*
-		metaEdgeIter mei = boost::edges(*this);
-		for (; mei.first != mei.second; ++mei)
-		{
-			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
-		}*/
 		SetSelectSegmentPointOperation();
 	}
 	
@@ -468,14 +461,14 @@ namespace Roots
 
 		if (selectionVBO.size() > 0)
 		{
-			glLineWidth(edgeOptions.scale * (float)edgeSelectionScaling);
-			glDrawElements(GL_LINES, (int)(selectionVBO.size()), (int)GL_UNSIGNED_INT, &selectionVBO[0]);
+			glLineWidth(edgeOptions.scale * edgeSelectionScaling);
+			glDrawElements(GL_LINES, selectionVBO.size(), GL_UNSIGNED_INT, &selectionVBO[0]);
 		}
 
 		// edges on loop: thicker
 		if (edgeOptions.magnifyNonBridges)
 		{
-			glLineWidth(edgeOptions.scale * (float)nonBridgeScaling);
+			glLineWidth(edgeOptions.scale * nonBridgeScaling);
 		}
 		else
 		{
@@ -487,14 +480,14 @@ namespace Roots
 			// show loop
 			if (nonBridgeVBO.size() > 0)
 			{
-				glDrawElements(GL_LINES, (int)(nonBridgeVBO.size()), (int)GL_UNSIGNED_INT, &nonBridgeVBO[0]);
+				glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
 			}
 
 			// show non-loop
 			if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0)
 			{
 				glLineWidth(edgeOptions.scale);
-				glDrawElements(GL_LINES, (int)(bridgeVBO.size()), (int)GL_UNSIGNED_INT, &bridgeVBO[0]);
+				glDrawElements(GL_LINES, bridgeVBO.size(), GL_UNSIGNED_INT, &bridgeVBO[0]);
 			}
 		}
 		
@@ -502,31 +495,27 @@ namespace Roots
 		// only draw selected segment
 		if (selectedSegmentVBO.size() > 0 && showSelectedSegment)
 		{
-			glDrawElements(GL_LINES, (int)(selectedSegmentVBO.size()), (int)GL_UNSIGNED_INT, &selectedSegmentVBO[0]);
+			glDrawElements(GL_LINES, selectedSegmentVBO.size(), GL_UNSIGNED_INT, &selectedSegmentVBO[0]);
 		}
 
 		if (showTraitsOnly)
 		{
-			//glLineWidth(edgeOptions.scale * nonBridgeScaling);
-			glDrawElements(GL_LINES, (int)(stemVBO.size()), (int)GL_UNSIGNED_INT, &stemVBO[0]);
+			glDrawElements(GL_LINES, stemVBO.size(), GL_UNSIGNED_INT, &stemVBO[0]);
 		}
 
 		// only draw primary branches with color setting
 		if (PrimaryBranchesObj.size() > 0)
 		{
-			int colorTableSize = (int)(randomColorLoopUpTable.size());
-			//glLineWidth(edgeOptions.scale * nonBridgeScaling);
+			int colorTableSize = randomColorLoopUpTable.size();
 			if (showTraitsOnly && primaryBranchesVBO.size() > 0)
 			{
-				glDrawElements(GL_LINES, (int)(primaryBranchesVBO.size()), (int)GL_UNSIGNED_INT, &primaryBranchesVBO[0]);
+				glDrawElements(GL_LINES, primaryBranchesVBO.size(), GL_UNSIGNED_INT, &primaryBranchesVBO[0]);
 			}
 
 			if (showConfirmedPrimaryBranches && !showOnlyBranchesOfCurrentPrimaryNode)
 			{
 				for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
 				{
-					//std::cout << vectorit->primaryNode << std::endl;
-					//glDrawElements(GL_LINES, vectorit->metaEdges.size(), GL_UNSIGNED_INT, &vectorit->metaEdges[0]);
 					for (MetaE edge : vectorit->metaEdges)
 					{
 						// set confirmed branches the same color as the connected node
@@ -539,9 +528,7 @@ namespace Roots
 							for (int i = 0; i < 4; ++i)
 							{
 								edgeColor[i] = randomColorLoopUpTable[index][i];
-								//edgeColor[i] = ColorTable::getComponentColor(index)[i];
 							}
-							//std::vector<GLfloat> edgeColor = ColorTable::getComponentColor(index);
 							colorEdge(edge, edgeColor);
 						}
 						else
@@ -556,14 +543,11 @@ namespace Roots
 				int index = 0;
 				for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
 				{
-					//glDrawElements(GL_LINES, vectorit->metaEdges.size(), GL_UNSIGNED_INT, &vectorit->metaEdges[0]);
-					//std::cout << vectorit->primaryNode << std::endl;
 					if (vectorit->primaryNodeIndex == CurrentPrimaryNode)
 					{
 						GLfloat edgeColor[4];
 						for (int i = 0; i < 4; ++i)
 						{
-							//edgeColor[i] = ColorTable::getComponentColor(index)[i];
 							edgeColor[i] = randomColorLoopUpTable[index][i];
 						}
 						for (MetaE edge : vectorit->metaEdges)
@@ -580,7 +564,6 @@ namespace Roots
 				int index = 0;
 				for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
 				{
-					//glDrawElements(GL_LINES, vectorit->metaEdges.size(), GL_UNSIGNED_INT, &vectorit->metaEdges[0]);
 					// show branches of current node using random color
 					if (vectorit->primaryNodeIndex == CurrentPrimaryNode)
 					{
@@ -588,7 +571,6 @@ namespace Roots
 						for (int i = 0; i < 4; ++i)
 						{
 							edgeColor[i] = randomColorLoopUpTable[index][i];
-							//edgeColor[i] = ColorTable::getComponentColor(index)[i];
 						}
 						for (MetaE edge : vectorit->metaEdges)
 						{
@@ -610,7 +592,6 @@ namespace Roots
 								for (int i = 0; i < 4; ++i)
 								{
 									edgeColor[i] = randomColorLoopUpTable[index2][i];
-									//edgeColor[i] = ColorTable::getComponentColor(index2)[i];
 								}
 								colorEdge(edge, edgeColor);
 							}
@@ -631,7 +612,6 @@ namespace Roots
 				MetaV u_tmp = boost::source(*riter, *this);
 				MetaV v_tmp = boost::target(*riter, *this);
 				MetaE e_tmp = boost::edge(u_tmp, v_tmp, *this).first;
-				//highLightEdge(e_tmp);
 				colorEdge(e_tmp, GREEN);
 			}
 		}
@@ -645,7 +625,7 @@ namespace Roots
 			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
 			glColorPointer(3, GL_FLOAT, 0, testColor.data());
 			
-			glDrawElements(GL_LINES, (int)(autoStemVBO.size()), (int)GL_UNSIGNED_INT, &autoStemVBO[0]);
+			glDrawElements(GL_LINES, autoStemVBO.size(), GL_UNSIGNED_INT, &autoStemVBO[0]);
 
 			glEnable(GL_DEPTH_TEST);
 		}
@@ -705,11 +685,11 @@ namespace Roots
 
 			if (e->isSelected)
 			{
-				glLineWidth(edgeOptions.scale * (float)edgeSelectionScaling);
+				glLineWidth(edgeOptions.scale * edgeSelectionScaling);
 			}
 			else if (edgeOptions.magnifyNonBridges && !e->isBridge)
 			{
-				glLineWidth(edgeOptions.scale * (float)nonBridgeScaling);
+				glLineWidth(edgeOptions.scale * nonBridgeScaling);
 			}
 			else
 			{
@@ -717,7 +697,7 @@ namespace Roots
 			}
 			
 
-			glDrawElements(GL_LINES, (int)(e->indicesList.size()), (int)GL_UNSIGNED_INT, &e->indicesList[0]);
+			glDrawElements(GL_LINES, e->indicesList.size(), GL_UNSIGNED_INT, &e->indicesList[0]);
 		}
 
 		glDisableClientState(GL_VERTEX_ARRAY);
@@ -738,7 +718,7 @@ namespace Roots
 		for (; mvi.first != mvi.second; ++mvi)
 		{
 			BMetaNode *node = &operator[](*mvi.first);
-			int degree = (int)(boost::degree(*mvi.first, *this));
+			int degree = boost::degree(*mvi.first, *this);
 
 			if ((degree == 1 && !nodeOptions.showEndpoints) || (degree > 2 && !nodeOptions.showJunctions) || degree == 2)
 			{
@@ -794,8 +774,7 @@ namespace Roots
 			{
 				nodeColor = node->currentColor;
 			}
-			
-			//if (!PrimaryBranchesNode.empty() && (std::find(PrimaryBranchesNode.begin(), PrimaryBranchesNode.end(), *mvi.first) != PrimaryBranchesNode.end()))
+
 			if (PrimaryBranchSelectionValid && (*mvi.first == PrimaryBranchSelection))
 			{
 				isSelected = true;
@@ -825,17 +804,15 @@ namespace Roots
 				//isSelected = true; // all primary nodes : show bigger
 				if (isRandomColorizePrimaryNodes)
 				{
-					int index = (int)(std::distance(PrimaryNodes.begin(), it));
+					int index = std::distance(PrimaryNodes.begin(), it);
 					index = index % randomColorLoopUpTable.size();
 					GLfloat temp[4];
 					for (int i = 0; i < 4; ++i)
 					{
 						temp[i] = randomColorLoopUpTable[index][i];
-						//temp[i] = ColorTable::getComponentColor(index)[i];
 					}
 					nodeColor = temp;
 				}
-				//if (selectPrimaryNodesValid)//&& (temp == PrimaryNodes.back().second))
 				if (showPrimaryNodes)
 				{
 					isSelected = true;
@@ -872,7 +849,6 @@ namespace Roots
 			if (degree == 0)
 			{
 				drawCube.fancierDraw(nodeColor, node->x(), node->y(), node->z(), scale);
-				// std::cout << "drawNode degree = 0" << std::endl;
 			}
 			else
 			{
@@ -900,7 +876,7 @@ namespace Roots
 		for (; mvi.first != mvi.second; ++mvi)
 		{
 			BMetaNode *node = &operator[](*mvi.first);
-			int degree = (int)(boost::degree(*mvi.first, *this));
+			int degree = boost::degree(*mvi.first, *this);
 
 			if ((degree == 1 && !nodeOptions.showEndpoints) || (degree > 2 && !nodeOptions.showJunctions) || degree == 2)
 			{
@@ -920,7 +896,7 @@ namespace Roots
 				}
 			}
 
-			int num = (int)(*mvi.first);
+			int num = (*mvi.first);
 			nodeIdColor[0] = (num & 0x000000FF) >> 0;
 			nodeIdColor[1] = (num & 0x0000FF00) >> 8;
 			nodeIdColor[2] = (num & 0x00FF0000) >> 16;
@@ -945,10 +921,7 @@ namespace Roots
 			if (it != PrimaryNodes.end())
 			{
 				isSelected = true;
-				//std::cout << "nodepickrender pri node" << std::endl;
 			}
-
-			//if (!PrimaryBranchesNode.empty() && (std::find(PrimaryBranchesNode.begin(), PrimaryBranchesNode.end(), *mvi.first) != PrimaryBranchesNode.end()))
 			if (PrimaryBranchSelectionValid && (*mvi.first == PrimaryBranchSelection))
 			{
 				isSelected = true;
@@ -985,7 +958,6 @@ namespace Roots
 			else
 			{
 				drawSphere.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
-				//std::cout << "test draw node 2333 " << std::endl;
 			}
 		}
 
@@ -1013,7 +985,7 @@ namespace Roots
 
 		GLubyte vertIdColor[3];
 		
-		float scale = 0.5f * (nodeOptions.endpointScale + nodeOptions.junctionScale);
+		float scale = 0.5 * (nodeOptions.endpointScale + nodeOptions.junctionScale);
 		for (; mei.first != mei.second; ++mei)
 		{
 			BMetaEdge *e = &operator[](*mei.first);
@@ -1029,9 +1001,9 @@ namespace Roots
 			for (int i = 1; i < e->mVertices.size() - 1; ++i)
 			{
 				SkelVert v = e->mVertices[i];
-				vertIdColor[0] = ((unsigned char)v & 0x000000FF) >> 0;
-				vertIdColor[1] = ((unsigned char)v & 0x0000FF00) >> 8;
-				vertIdColor[2] = ((unsigned char)v & 0x00FF0000) >> 16;
+				vertIdColor[0] = (v & 0x000000FF) >> 0;
+				vertIdColor[1] = (v & 0x0000FF00) >> 8;
+				vertIdColor[2] = (v & 0x00FF0000) >> 16;
 				Point3d *p = &mSkeleton[v];
 				drawSphere.pickDraw(vertIdColor, p->x(), p->y(), p->z(), scale);
 			}
@@ -1067,8 +1039,6 @@ namespace Roots
 				}
 			}
 		}
-
-		//std::cout << "drawboxes" << std::endl;
 		if (showSuggestedNode && auto_node.size() > 0)
 		{
 			for (int i = 0; i < auto_node.size(); ++i)
@@ -1085,31 +1055,10 @@ namespace Roots
 	{
 		if (useArcball)
 		{
-			//glMatrixMode(GL_MODELVIEW);
 			glTranslatef(eyeShiftX, eyeShiftY, -mSkeleton.mRadius * 2);
 			arcball_rotate();
 			glTranslatef(-viewCenter.x(), -viewCenter.y(), -viewCenter.z());
 		}
-
-		/*
-		if (isDisplaySelectedSegment())
-		{
-			//getClipPlane();
-			glEnable(GL_CLIP_PLANE0);
-			glEnable(GL_CLIP_PLANE1);
-			GLdouble *c = new GLdouble[4];
-			for (int i = 0; i < 4; ++i)
-			{
-				c[i] = rootClipPlaneNormal[0][i];
-			}
-			glClipPlane(GL_CLIP_PLANE0, c);
-			for (int i = 0; i < 4; ++i)
-			{
-				c[i] = rootClipPlaneNormal[1][i];
-			}
-			glClipPlane(GL_CLIP_PLANE1, c);
-		}*/
-
 		glEnable(GL_LIGHTING);
 		drawNodes();
 		glDisable(GL_LIGHTING);
@@ -1117,13 +1066,6 @@ namespace Roots
 		drawBoxes();
 		glGetFloatv(GL_MODELVIEW_MATRIX, modelViewTransform);
 		glGetFloatv(GL_PROJECTION_MATRIX, projectionTransform);
-		/*
-		if (isDisplaySelectedSegment())
-		{
-			glDisable(GL_CLIP_PLANE0);
-			glDisable(GL_CLIP_PLANE1);
-		}*/
-
 		if (displayMesh)
 		{
 			alphaMesh.render();

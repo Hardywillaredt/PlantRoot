@@ -53,7 +53,7 @@ static vec edge_coords(vec m)
 	// the plane outside the sphere toward the eye-axis.
 	float ac = (a*c);
 	float c2 = (c*c);
-	float q = (0.0f - ac - sqrt(ac*ac - c2*((a*a) - ab_sphere2))) / c2;
+	float q = (0.0 - ac - sqrt(ac*ac - c2*((a*a) - ab_sphere2))) / c2;
 
 	return (a + (c*q)).unit();
 }
@@ -72,7 +72,7 @@ static vec sphere_coords(GLdouble mx, GLdouble my)
 	GLfloat b = (ab_eye*m);
 	GLfloat root = (b*b) - a*(ab_zoom2 - ab_sphere2);
 	if (root <= 0) return edge_coords(m);
-	GLfloat t = (0.0f - b - sqrt(root)) / a;
+	GLfloat t = (0.0 - b - sqrt(root)) / a;
 	return (ab_eye + (m*t)).unit();
 }
 
@@ -83,7 +83,7 @@ void arcball_setzoom(float radius, vec eye, vec up)
   ab_zoom = sqrt(ab_zoom2); // store eye distance
   ab_sphere = radius; // sphere radius
   ab_sphere2 = ab_sphere * ab_sphere;
-  ab_eyedir = ab_eye * (1.0f / ab_zoom); // distance to eye
+  ab_eyedir = ab_eye * (1.0 / ab_zoom); // distance to eye
   ab_edge = ab_sphere2 / ab_zoom; // plane of visible edge
   
   if(ab_sphere <= 0.0) // trackball mode
@@ -91,7 +91,7 @@ void arcball_setzoom(float radius, vec eye, vec up)
     ab_planar = true;
     ab_up = up;
     ab_out = ( ab_eyedir ^ ab_up );
-    ab_planedist = (0.0f - ab_sphere) * ab_zoom;
+    ab_planedist = (0.0 - ab_sphere) * ab_zoom;
   } else
     ab_planar = false;
     
@@ -216,7 +216,7 @@ void arcball_move(int mx, int my, float zoom)
     // d is motion since the last position
     vec d = ab_curr - ab_start;
     
-    GLfloat angle = d.length() * 0.5f;
+    GLfloat angle = d.length() * 0.5;
     GLfloat cosa = cos( angle );
     GLfloat sina = sin( angle );
     // p is perpendicular to d
@@ -240,9 +240,9 @@ void arcball_move(int mx, int my, float zoom)
     // use a dot product to get the angle between them
     // use a cross product to get the vector to rotate around
     GLfloat cos2a = ab_start*ab_curr;
-    GLfloat sina = sqrt((1.0f - cos2a) * 0.5f);
-    GLfloat cosa = sqrt((1.0f + cos2a) * 0.5f);
-	cosa = std::fmin(1.0f, cosa);
+    GLfloat sina = sqrt((1.0 - cos2a)*0.5);
+    GLfloat cosa = sqrt((1.0 + cos2a)*0.5);
+	cosa = std::fmin(1.0, cosa);
     vec cross = (ab_start^ab_curr).unit() * sina;
     quaternion(ab_next,cross.x,cross.y,cross.z,cosa);
 

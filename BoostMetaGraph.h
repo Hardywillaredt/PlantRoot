@@ -1,5 +1,4 @@
 #pragma once
-
 #include "BoostSkeleton.h"
 #include "boost/python.hpp"
 #include "arcball.h"
@@ -8,7 +7,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <map>
-
 #include "Sphere.h"
 #include "Mesh.h"
 
@@ -84,7 +82,6 @@ namespace Roots
 		std::vector<std::vector<GLfloat>> heatmap;
 		float flatSelectionColor[4];
 		float traitSelectionColor[4];
-
 		EdgeVisualizationOptions();
 	};
 
@@ -101,9 +98,6 @@ namespace Roots
 		float minColorCutoff, maxColorCutoff;
 		ColorizationOptions colorization;
 		std::vector<std::vector<GLfloat>> heatmap;
-
-
-
 		NodeVisualizationOptions();
 	};
 
@@ -342,16 +336,16 @@ namespace Roots{
 		GLfloat GREEN[4] = { 0.0, 1.0, 0.0, 1.0 };
 		GLfloat BLUE[4] = { 0.0, 0.0, 1.0, 1.0 };
 		std::vector<std::vector<GLfloat>> randomColorLoopUpTable{
-			{0.824f, 0.961f, 0.235f, 1.0f},
-			{0.569f, 0.118f, 0.706f, 1.0f},
-			{0.275f, 0.941f, 0.941f, 1.0f},
-			{0.941f, 0.196f, 0.902f, 1.0f},
-			{1.0f, 0.882f, 0.098f, 1.0f},
-			{0.98f, 0.745f, 0.745f, 1.0f},
-			{0.0f, 0.51f, 0.784f, 1.0f},
-			{0.51f, 0.961f, 0.188f, 1.0f},
-			{0.0f, 0.502f, 0.502f, 1.0f},
-			{0.902f, 0.745f, 1.0f, 1.0f},
+			{0.824, 0.961, 0.235, 1.0},
+			{0.569, 0.118, 0.706, 1.0},
+			{0.275, 0.941, 0.941, 1.0},
+			{0.941, 0.196, 0.902, 1.0},
+			{1.0, 0.882, 0.098, 1.0},
+			{0.98, 0.745, 0.745, 1.0},
+			{0.0, 0.51, 0.784, 1.0},
+			{0.51, 0.961, 0.188, 1.0},
+			{0.0, 0.502, 0.502, 1.0},
+			{0.902, 0.745, 1.0, 1.0},
 			{0.667f, 0.431f, 0.157f, 1.0f},
 			{1.0f, 0.98f, 0.784f, 1.0f},
 			{0.502f, 0.0f, 0.0f, 1.0f},
@@ -380,6 +374,7 @@ namespace Roots{
 			{1.0f, 0.843f, 0.706f, 1.0f},
 			{0.0f, 0.0f, 0.502f, 1.0f},
 			{0.502f, 0.502f, 0.502f, 1.0f} };
+		
 		
 		bool PrimaryBranchSelectionValid;
 		MetaV PrimaryBranchSelection;
@@ -542,7 +537,7 @@ namespace Roots{
 
 		int getNumPrimaryNodes()
 		{
-			return (int)PrimaryNodes.size();
+			return PrimaryNodes.size();
 		}
 
 		bool isDisplaySelectedSegment();

@@ -1,13 +1,12 @@
 #pragma once
-
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <vector>
 
-#define xfloat .525731112119133606f
-#define zfloat .850650808352039932f
+#define xfloat .525731112119133606 
+#define zfloat .850650808352039932
 namespace drawing
 {
 	static GLfloat vdata[12][3] = {
@@ -34,7 +33,6 @@ namespace drawing
 		std::vector<GLfloat> normals;
 		std::vector<GLuint> indices;
 
-
 		VBOSphere(double radius, int numSubdivisions);
 		VBOSphere();
 
@@ -50,7 +48,7 @@ namespace drawing
 		double scale;
 		std::vector<GLfloat> vertices;
 		std::vector<GLuint> indices;
-		VBOCube(float radius);
+		VBOCube(double radius);
 		VBOCube();
 
 		void init(float radius);

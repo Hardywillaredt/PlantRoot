@@ -8,34 +8,25 @@ std::string logFile = "D:/dev/school/rootsProject/python/log.txt";
 std::ofstream Log::out = std::ofstream();
 bool Log::isLogOpen = false;
 
-//Point3d::Point3d(float *aData, int index)
-//{
-//	p[0] = aData[0];
-//	p[1] = aData[1];
-//	p[2] = aData[2];
-//	id = index;
-//}
-
-
 Point3d::Point3d(float ax, float ay, float az, float thickness, float width, int index)
 {
 	p[0] = ax;
 	p[1] = ay;
 	p[2] = az;
 	p[3] = thickness;
-	p[4] = width + 0.0000001f;
+	p[4] = width + 0.0000001;
 	p[5] = thickness / width;
 	id = index;
 }
 
 Point3d::Point3d()
 {
-	p[0] = 0.0f;
-	p[1] = 0.0f;
-	p[2] = 0.0f;
-	p[3] = 0.0f;
-	p[4] = 0.0000001f;
-	p[5] = 0.0f;
+	p[0] = 0;
+	p[1] = 0;
+	p[2] = 0;
+	p[3] = 0;
+	p[4] = 0.0000001;
+	p[5] = 0;
 	id = 0;
 }
 
@@ -118,8 +109,6 @@ void Log::WriteLine(std::string line)
 
 		time_t theTime = time(NULL);
 		struct tm *aTime = localtime(&theTime);
-
-
 		out << aTime->tm_hour << ":" << aTime->tm_min << std::endl;
 	}
 	out << line << std::endl;
