@@ -1,5 +1,4 @@
 #pragma once
-
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,7 +32,6 @@ namespace drawing
 		std::vector<GLfloat> vertices;
 		std::vector<GLfloat> normals;
 		std::vector<GLuint> indices;
-
 
 		VBOSphere(double radius, int numSubdivisions);
 		VBOSphere();

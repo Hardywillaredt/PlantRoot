@@ -14,8 +14,6 @@ namespace Roots
 		Thickness = 0,
 		Width=1,
 		Length=2,
-
-
 		NumAttributes=3
 	};
 
@@ -25,8 +23,6 @@ namespace Roots
 	public:
 		int v0id, v1id;
 		float euclidLength;
-
-
 
 		friend std::ostream& operator<<(std::ostream &out, const RootAttributes &attribs);
 		friend std::istream& operator>>(std::istream &in, RootAttributes &attribs);
@@ -38,10 +34,5 @@ namespace Roots
 		RootAttributes(int id0, int id1, Point3d &v0, Point3d &v1);
 
 		bool operator==(RootAttributes& second);
-
-		//float operator[](const int index);
-
-
-	
 	};
 }

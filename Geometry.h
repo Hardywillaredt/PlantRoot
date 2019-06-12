@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iostream>
 #include "boost/python.hpp"
 
@@ -10,7 +11,6 @@ public:
 	float p[6];
 
 	int id;
-
 
 	Point3d(float ax, float ay, float az, float thickness, float width, int index = 0);
 

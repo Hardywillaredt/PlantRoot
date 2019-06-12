@@ -6,12 +6,10 @@ namespace Roots
 	//////////////////////////////////////////////EDGES////////////////////////////////////////////
 	EdgeVisualizationOptions::EdgeVisualizationOptions()
 	{
-
 		show = true;
 		scale = 1.0;
 		magnifyNonBridges = false;
 		showOnlyNonBridges = false;
-
 		minColorCutoff = 0.0;
 		maxColorCutoff = 1.0;
 		colorization = ColorizationOptions::ByThickness;
@@ -19,6 +17,10 @@ namespace Roots
 		flatSelectionColor[1] = 1.0;
 		flatSelectionColor[2] = 1.0;
 		flatSelectionColor[3] = 1.0;
+		traitSelectionColor[0] = 1.0;
+		traitSelectionColor[1] = 1.0;
+		traitSelectionColor[2] = 1.0;
+		traitSelectionColor[3] = 1.0;
 		heatmap = { { 1.0, 0.0, 0.0, 1.0 },{ 1.0, 0.0, 0.0, 1.0 } };
 
 	}
@@ -41,6 +43,7 @@ namespace Roots
 		std::cout << "Magnify non-bridges " << std::to_string(doMagnify) << std::endl;
 	}
 
+	// show loops
 	void BMetaGraph::showOnlyNonBridges(bool showOnly)
 	{
 		edgeOptions.showOnlyNonBridges = showOnly;
@@ -50,6 +53,7 @@ namespace Roots
 	void BMetaGraph::assignEdgeHeatMap(boost::python::list heatmap)
 	{
 		edgeOptions.heatmap = {};
+		std::cout << "boost::python::len(heatmap) is " << boost::python::len(heatmap) << std::endl;
 		for (int i = 0; i < boost::python::len(heatmap); ++i)
 		{
 			std::vector<GLfloat> vectorColor = {};
@@ -61,7 +65,7 @@ namespace Roots
 			edgeOptions.heatmap.push_back(vectorColor);
 		}
 		metaEdgeIter mei = boost::edges(*this);
-		for (; mei.first != mei.second; ++mei)
+		for (;mei.first != mei.second; ++mei)
 		{
 			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
@@ -119,6 +123,14 @@ namespace Roots
 		edgeOptions.flatSelectionColor[0] = r;
 		edgeOptions.flatSelectionColor[1] = g;
 		edgeOptions.flatSelectionColor[2] = b;
+		return;
+	}
+
+	void BMetaGraph::setCurrentPrimaryNodeSelectionColor(float r, float g, float b)
+	{
+		edgeOptions.traitSelectionColor[0] = r;
+		edgeOptions.traitSelectionColor[1] = g;
+		edgeOptions.traitSelectionColor[2] = b;
 		return;
 	}
 
@@ -299,8 +311,9 @@ namespace Roots
 		}
 	}
 
-	//////////////////////////////////////////COMPONENT OPTIONS////////////////////////////////////
-
+	//////////////////////////////////// EXTRA OPTIONS ////////////////////////////////////
+	
+	/* component options */
 	void BMetaGraph::setDisplayOnlySelectedComponents(bool displayOnlySelectedComponents)
 	{
 		onlyDisplaySelectedComponents = displayOnlySelectedComponents;
@@ -337,6 +350,81 @@ namespace Roots
 		std::cout << "Show bounding boxes set to " << doShow << std::endl;
 	}
 
+	/* stem options */
+	void BMetaGraph::setDisplayStem(bool doShowStem)
+	{
+		showStem = doShowStem;
+		buildEdgeVBOs();
+	}
+	
+	void BMetaGraph::setDisplaySuggestedStem(bool doShow)
+	{
+		showSuggestedStem = doShow;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setDisplayPrimaryNodes(bool doShowPriamryNodes)
+	{
+		showPrimaryNodes = doShowPriamryNodes;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setDisplaySuggestedNode(bool doShow)
+	{
+		showSuggestedNode = doShow;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setCurrentPrimaryNode(int node)
+	{
+		std::cout << "CurrentPrimaryNode " << CurrentPrimaryNode << std::endl;
+		if (CurrentPrimaryNode != node)
+		{
+			CurrentPrimaryNode = node;
+			std::cout << "Primary node set to " << node << std::endl;
+			unselectAll();
+			buildEdgeVBOs();
+			CurrentPredecessors = NodesPredecessors[CurrentPrimaryNode].predecessors;
+		}
+	}
+
+	void BMetaGraph::setDisplayConfirmedPrimaryBranches(bool doShowConfirmedBranches)
+	{
+		showConfirmedPrimaryBranches = doShowConfirmedBranches;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setRandomColorizePrimaryNodes(bool doShow)
+	{
+		isRandomColorizePrimaryNodes = doShow;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setDisplayOnlyBranchesOfCurrentPrimaryNode(bool doShow)
+	{
+		showOnlyBranchesOfCurrentPrimaryNode = doShow;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setDisplayTraitsOnly(bool doShow)
+	{
+		showTraitsOnly = doShow;
+		buildEdgeVBOs();
+	}
+
+
+	void BMetaGraph::setDisplaySelectedSegment(bool doShow)
+	{
+		showSelectedSegment = doShow;
+		buildEdgeVBOs();
+	}
+
+	void BMetaGraph::setSegmentHorizontalSliderRadius(float val)
+	{
+		SegmentHorizontalRadius = val;
+		SetSelectSegmentPointOperation();
+	}
+	
 	/////////////////////////////////////////DRAWING///////////////////////////////////////////////
 
 	void BMetaGraph::drawEdges()
@@ -346,6 +434,7 @@ namespace Roots
 			return;
 		}
 		GLfloat *colorArray;
+
 		switch (edgeOptions.colorization)
 		{
 		case ColorizationOptions::ByThickness:
@@ -376,6 +465,7 @@ namespace Roots
 			glDrawElements(GL_LINES, selectionVBO.size(), GL_UNSIGNED_INT, &selectionVBO[0]);
 		}
 
+		// edges on loop: thicker
 		if (edgeOptions.magnifyNonBridges)
 		{
 			glLineWidth(edgeOptions.scale * nonBridgeScaling);
@@ -384,19 +474,162 @@ namespace Roots
 		{
 			glLineWidth(edgeOptions.scale);
 		}
-		if (nonBridgeVBO.size() > 0)
+
+		if (!showTraitsOnly && !showSelectedSegment)
 		{
-			glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
+			// show loop
+			if (nonBridgeVBO.size() > 0)
+			{
+				glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
+			}
+
+			// show non-loop
+			if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0)
+			{
+				glLineWidth(edgeOptions.scale);
+				glDrawElements(GL_LINES, bridgeVBO.size(), GL_UNSIGNED_INT, &bridgeVBO[0]);
+			}
 		}
 		
 
-
-		if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0)
+		// only draw selected segment
+		if (selectedSegmentVBO.size() > 0 && showSelectedSegment)
 		{
-			glLineWidth(edgeOptions.scale);
-			glDrawElements(GL_LINES, bridgeVBO.size(), GL_UNSIGNED_INT, &bridgeVBO[0]);
+			glDrawElements(GL_LINES, selectedSegmentVBO.size(), GL_UNSIGNED_INT, &selectedSegmentVBO[0]);
 		}
-		
+
+		if (showTraitsOnly)
+		{
+			glDrawElements(GL_LINES, stemVBO.size(), GL_UNSIGNED_INT, &stemVBO[0]);
+		}
+
+		// only draw primary branches with color setting
+		if (PrimaryBranchesObj.size() > 0)
+		{
+			int colorTableSize = randomColorLoopUpTable.size();
+			if (showTraitsOnly && primaryBranchesVBO.size() > 0)
+			{
+				glDrawElements(GL_LINES, primaryBranchesVBO.size(), GL_UNSIGNED_INT, &primaryBranchesVBO[0]);
+			}
+
+			if (showConfirmedPrimaryBranches && !showOnlyBranchesOfCurrentPrimaryNode)
+			{
+				for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
+				{
+					for (MetaE edge : vectorit->metaEdges)
+					{
+						// set confirmed branches the same color as the connected node
+						if (isRandomColorizePrimaryNodes)
+						{
+							int index = vectorit->primaryNodeIndex;
+							index = index % colorTableSize;
+							
+							GLfloat edgeColor[4];
+							for (int i = 0; i < 4; ++i)
+							{
+								edgeColor[i] = randomColorLoopUpTable[index][i];
+							}
+							colorEdge(edge, edgeColor);
+						}
+						else
+						{
+							highLightEdge(edge);
+						}
+					}
+				}
+			}
+			if (showOnlyBranchesOfCurrentPrimaryNode && !showConfirmedPrimaryBranches)
+			{
+				int index = 0;
+				for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
+				{
+					if (vectorit->primaryNodeIndex == CurrentPrimaryNode)
+					{
+						GLfloat edgeColor[4];
+						for (int i = 0; i < 4; ++i)
+						{
+							edgeColor[i] = randomColorLoopUpTable[index][i];
+						}
+						for (MetaE edge : vectorit->metaEdges)
+						{
+							colorEdge(edge, edgeColor);
+						}
+						++index;
+						index = index % colorTableSize;
+					}
+				}
+			}
+			if (showOnlyBranchesOfCurrentPrimaryNode && showConfirmedPrimaryBranches)
+			{
+				int index = 0;
+				for (auto vectorit = PrimaryBranchesObj.begin(); vectorit != PrimaryBranchesObj.end(); ++vectorit)
+				{
+					// show branches of current node using random color
+					if (vectorit->primaryNodeIndex == CurrentPrimaryNode)
+					{
+						GLfloat edgeColor[4];
+						for (int i = 0; i < 4; ++i)
+						{
+							edgeColor[i] = randomColorLoopUpTable[index][i];
+						}
+						for (MetaE edge : vectorit->metaEdges)
+						{
+							colorEdge(edge, edgeColor);
+						}
+						++index;
+						index = index % colorTableSize;
+					}
+					// show branches of other nodes using the same color as their connected nodes
+					else
+					{
+						for (MetaE edge : vectorit->metaEdges)
+						{
+							if (isRandomColorizePrimaryNodes)
+							{
+								int index2 = vectorit->primaryNodeIndex;
+								index2 = index2 % colorTableSize;
+								GLfloat edgeColor[4];
+								for (int i = 0; i < 4; ++i)
+								{
+									edgeColor[i] = randomColorLoopUpTable[index2][i];
+								}
+								colorEdge(edge, edgeColor);
+							}
+							else
+							{
+								highLightEdge(edge);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (showStem && stemSelected)
+		{
+			for (std::vector<MetaE>::reverse_iterator riter = StemPath.rbegin(); riter != StemPath.rend(); ++riter)
+			{
+				MetaV u_tmp = boost::source(*riter, *this);
+				MetaV v_tmp = boost::target(*riter, *this);
+				MetaE e_tmp = boost::edge(u_tmp, v_tmp, *this).first;
+				colorEdge(e_tmp, GREEN);
+			}
+		}
+
+		if (autoStemVBO.size() > 0 && showSuggestedStem)
+		{
+			glDisable(GL_DEPTH_TEST);
+			
+			std::vector<float> testColor(mSkeleton.glVertices.size(),1);
+			
+			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
+			glColorPointer(3, GL_FLOAT, 0, testColor.data());
+			
+			glDrawElements(GL_LINES, autoStemVBO.size(), GL_UNSIGNED_INT, &autoStemVBO[0]);
+
+			glEnable(GL_DEPTH_TEST);
+		}
+
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glDisableClientState(GL_COLOR_ARRAY);
 	}
@@ -492,7 +725,23 @@ namespace Roots
 				continue;
 			}
 
-			
+			if (showTraitsOnly)
+			{
+				if (std::find(TraitsNodes.begin(), TraitsNodes.end(), *mvi.first) == TraitsNodes.end())
+				{
+					continue;
+				}
+			}
+
+			if (showSelectedSegment)
+			{
+				// not find this node in segmentation selection
+				if (std::find(SegmentMetaNodes.begin(), SegmentMetaNodes.end(), *mvi.first) == SegmentMetaNodes.end())
+				{
+					continue;
+				}
+			}
+
 			bool isSelected = false;
 
 			float scale = 0.0;
@@ -525,7 +774,60 @@ namespace Roots
 			{
 				nodeColor = node->currentColor;
 			}
+
+			if (PrimaryBranchSelectionValid && (*mvi.first == PrimaryBranchSelection))
+			{
+				isSelected = true;
+				//nodeColor = selectedPrimaryNodeColor;
+			}
+
 			if ((*mvi.first == selectNode1 && selectNode1Valid) || (*mvi.first == selectNode2 && selectNode2Valid))
+			{
+				isSelected = true;
+			}
+
+			if ((*mvi.first == selectStemStart && selectStemStartValid) || (*mvi.first == selectStemEnd && selectStemEndValid))
+			{
+				isSelected = true;
+			}
+
+			if (viewNodeInfoValid && *mvi.first == nodeToView)
+			{
+				isSelected = true;
+			}
+
+			// primary nodes setting
+			MetaV temp = *mvi.first;
+			auto it = std::find_if(PrimaryNodes.begin(), PrimaryNodes.end(), [&temp](const std::pair<int, MetaV>& element) { return element.second == temp; });
+			if ( it != PrimaryNodes.end() )
+			{
+				//isSelected = true; // all primary nodes : show bigger
+				if (isRandomColorizePrimaryNodes)
+				{
+					int index = std::distance(PrimaryNodes.begin(), it);
+					index = index % randomColorLoopUpTable.size();
+					GLfloat temp[4];
+					for (int i = 0; i < 4; ++i)
+					{
+						temp[i] = randomColorLoopUpTable[index][i];
+					}
+					nodeColor = temp;
+				}
+				if (showPrimaryNodes)
+				{
+					isSelected = true;
+				}
+			}
+
+			if ((CurrentPrimaryNode != -1) && (it != PrimaryNodes.end()))
+			{
+				if (*mvi.first == PrimaryNodes[CurrentPrimaryNode].second)
+				{
+					isSelected = true;
+				}
+			}
+
+			if ((*mvi.first == selectSegmentPoint1 && selectSegmentPoint1Valid) || (*mvi.first == selectSegmentPoint2 && selectSegmentPoint2Valid))
 			{
 				isSelected = true;
 			}
@@ -548,7 +850,6 @@ namespace Roots
 			{
 				drawCube.fancierDraw(nodeColor, node->x(), node->y(), node->z(), scale);
 			}
-
 			else
 			{
 				drawSphere.fancierDraw(nodeColor, node->x(), node->y(), node->z(), scale);
@@ -604,6 +905,32 @@ namespace Roots
 			{
 				isSelected = true;
 			}
+			
+			if ((*mvi.first == selectStemStart && selectStemStartValid) || (*mvi.first == selectStemEnd && selectStemEndValid))
+			{
+				isSelected = true;
+			}
+
+			if (viewNodeInfoValid && *mvi.first == nodeToView)
+			{
+				isSelected = true;
+			}
+
+			MetaV temp = *mvi.first;
+			auto it = std::find_if(PrimaryNodes.begin(), PrimaryNodes.end(), [&temp](const std::pair<int, MetaV>& element) { return element.second == temp; });
+			if (it != PrimaryNodes.end())
+			{
+				isSelected = true;
+			}
+			if (PrimaryBranchSelectionValid && (*mvi.first == PrimaryBranchSelection))
+			{
+				isSelected = true;
+			}
+
+			if ((*mvi.first == selectSegmentPoint1 && selectSegmentPoint1Valid) || (*mvi.first == selectSegmentPoint2 && selectSegmentPoint2Valid))
+			{
+				isSelected = true;
+			}
 
 			if (degree <= 1)
 			{
@@ -619,11 +946,15 @@ namespace Roots
 				scale *= nodeSelectionScaling;
 			}
 
+			// when degree == 2, then scale = 0
 			if (degree == 0)
 			{
-				drawCube.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+				if (!PrimaryBranchSelectionValid)
+				{
+					drawCube.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
+					std::cout << "nodePickRender degree = 0" << std::endl;
+				}
 			}
-
 			else
 			{
 				drawSphere.pickDraw(nodeIdColor, node->x(), node->y(), node->z(), scale);
@@ -683,7 +1014,6 @@ namespace Roots
 		glPopMatrix();
 	}
 
-
 	void BMetaGraph::drawBoxes()
 	{
 		if (showBoundingBoxes)
@@ -709,14 +1039,22 @@ namespace Roots
 				}
 			}
 		}
-
+		if (showSuggestedNode && auto_node.size() > 0)
+		{
+			for (int i = 0; i < auto_node.size(); ++i)
+			{
+				std::vector<GLfloat> c = ColorTable::getComponentColor(i);
+				auto_node[i].draw(c, edgeOptions.scale * 2);
+			}
+		}
 	}
+
+	
 
 	void BMetaGraph::draw()
 	{
 		if (useArcball)
 		{
-			//glMatrixMode(GL_MODELVIEW);
 			glTranslatef(eyeShiftX, eyeShiftY, -mSkeleton.mRadius * 2);
 			arcball_rotate();
 			glTranslatef(-viewCenter.x(), -viewCenter.y(), -viewCenter.z());

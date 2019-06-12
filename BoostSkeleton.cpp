@@ -1,7 +1,5 @@
 #include "BoostSkeleton.h"
 
-
-
 namespace Roots
 {
 	std::string BSkeleton::beginSkeletonString = "begin_skeleton";
@@ -37,11 +35,13 @@ namespace Roots
 		std::string line;
 		int numEdges = 0, numVerts = 0;
 		line = lines[startingLine];
+		boost::trim(line);
 
 		int result = startingLine;
+		std::cout << "Skeleton file type: " << line << std::endl;
 		if (boost::iequals(line, beginSkeletonString))
 		{
-			//std::cout << "The Skeleton file lacks the " << beginSkeletonString << "header.  Should attempt to load wenzhen style file" << std::endl;
+			std::cout << "The Skeleton file lacks the " << beginSkeletonString << "header.  Should attempt to load wenzhen style file" << std::endl;
 			result = loadWenzhenLines(lines, startingLine);
 		}
 		else if (boost::iequals(line, beginPlyString))
@@ -50,15 +50,10 @@ namespace Roots
 		}
 		else
 		{
-			//std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
+			std::cout << "This is recognized as a PLY style file.  Attempting to read..." << std::endl;
 			result = loadPlyStyleLines(lines, startingLine);
 		}
-
-		/*for (skelEdgeIter sei = boost::edges(*this); sei.first != sei.second; ++sei)
-		{
-			std::cout << "Line between " << operator[](sei.first->m_source) << " and " << operator[](sei.first->m_target) << std::endl;
-		}*/
-
+		
 		findBounds();
 		findBoundingSphere();
 		return result;
@@ -88,6 +83,7 @@ namespace Roots
 
 	int BSkeleton::loadWenzhenLines(std::vector<std::string> &lines, int startingLine)
 	{
+		std::cout << "Load Wenzhen lines" << std::endl;
 		int lineOn = startingLine;
 		
 		int numEdges=0, numVertices=0, numFaces=0;
@@ -97,19 +93,15 @@ namespace Roots
 		++lineOn;
 		if (words.size() < 2)
 		{
-			//std::cout << "The header information did not contain enough info. ";
-			//std::cout << "Please ensure file indicates at least number of vertices and edges" << std::endl;
+
 		}
 		if (words.size() >= 2)
 		{
 			numVertices = boost::lexical_cast<int>(words[0]);
-			//std::cout << "Number of vertices " << numVertices << std::endl;
 			numEdges = boost::lexical_cast<int>(words[1]);
-			//std::cout << "Number of edges " << numEdges << std::endl;
 		}
 		if (words.size() == 3)
 		{
-			//std::cout << "Faces listed as an input, but no behavior is currently defined for them" << std::endl;
 			numFaces = boost::lexical_cast<int>(words[2]);
 		}
 		
@@ -238,6 +230,7 @@ namespace Roots
 
 	int BSkeleton::loadPlyStyleLines(std::vector<std::string> &lines, int startingLine)
 	{
+		std::cout << "Load ply style lines" << std::endl;
 		std::vector<std::vector<std::string>> headerInfo;
 		bool endHeaderReached = false;
 		int lineOn = startingLine;
@@ -255,7 +248,6 @@ namespace Roots
 		}
 		if (lineOn >= lines.size())
 		{
-			//std::cout << "End of file reached before end of header, check file.  It is missing '" << endHeaderString << "' somewhere." << std::endl;
 			return lineOn;
 		}
 
@@ -278,9 +270,6 @@ namespace Roots
 			}
 			else
 			{
-				//another kind of BSkeleton attribute (eg a face?), currently undefined behavior
-				//std::cout << "The described Skeleton element " << headerWords[0] << " is not defined in this implementation." << std::endl;
-				//std::cout << "No action will be taken for this element" << std::endl;
 			}
 		}
 		return lineOn;
@@ -305,10 +294,9 @@ namespace Roots
 
 	void BSkeleton::loadEdges(std::vector<std::string> &lines, int &lineOn, int numEdges)
 	{
-		//std::cout << "Beginning to load edges" << std::endl;
-		//std::cout << "first line is : " << lines[lineOn] << std::endl;
+		std::cout << "Beginning to load edges " << std::endl;
+		std::cout << "first line is : " << lines[lineOn] << std::endl;
 		int v0, v1;
-		//float attributedata[NumAttributes];
 		std::vector<std::string> words;
 		for (int i = 0; i < numEdges && lineOn < lines.size(); ++i, ++lineOn)
 		{
@@ -321,7 +309,6 @@ namespace Roots
 			{
 				addEdge(v0, v1);
 			}
-
 		}
 	}
 
@@ -435,7 +422,6 @@ namespace Roots
 		}
 
 		sum = sum / m_vertices.size();
-		//Point3d sum = minPoint + maxPoint;
 		mCenter = sum;
 		originalCenter = mCenter;
 		mRadius = (maxPoint - mCenter).mag();
@@ -455,17 +441,6 @@ namespace Roots
 		}
 		updateGLVertices();
 		return;
-
-		//BSkeleton result = *this;
-		//skelVertIter resIter = boost::vertices(result);
-
-		//while (resIter.first != resIter.second)
-		//{
-		//	result[*resIter.first] += offset;
-		//	++resIter;
-		//}
-		//result.updateGLVertices();
-		//return result;
 	}
 
 	SkelEdge BSkeleton::getEdge(int v0, int v1, bool &exists)
@@ -531,7 +506,6 @@ PySkeleton::PySkeleton()
 
 PySkeleton::PySkeleton(Roots::BSkeleton *srcSkel)
 {
-	//std::cout << "setting skeleton to own skeleton " << std::endl;
 	mSkeleton = srcSkel;
 	reload();
 }
@@ -562,36 +536,19 @@ void PySkeleton::reload()
 	std::vector<float> thicknessList = {};
 	std::vector<float> widthList = {};
 	std::vector<float> ratioList = {};
-	//std::cout << "reloading" << std::endl;
+
 	if (mSkeleton == nullptr)
 	{
-		//std::cout << "Skeleton is nullptr" << std::endl;
 		return;
 	}
 	
 	for (skelVertIter svi = boost::vertices(*mSkeleton); svi.first != svi.second; ++svi)
 	{
 		Point3d vertexAdded = mSkeleton->operator[](*svi.first);
-		//std::cout << "Vertex reloaded " << vertexAdded << std::endl;
 		mVertexList.append<Point3d>(vertexAdded);
 	}
 	for (skelEdgeIter sei = boost::edges(*mSkeleton); sei.first != sei.second; ++sei)
 	{
-		//Roots::RootAttributes rootAdded = mSkeleton->operator[](*sei.first);
-		//minThickness = std::min(rootAdded.thickness, minThickness);
-		//maxThickness = std::max(rootAdded.thickness, maxThickness);
-		//thicknessList.push_back(rootAdded.thickness);
-
-		//minWidth = std::min(rootAdded.width, minWidth);
-		//maxWidth = std::max(rootAdded.width, maxWidth);
-		//widthList.push_back(rootAdded.width);
-
-		//minRatio = std::min(rootAdded.thickness / rootAdded.width, minRatio);
-		//maxRatio = std::max(rootAdded.thickness / rootAdded.width, maxRatio);
-		//ratioList.push_back(rootAdded.thickness / rootAdded.width);
-
-		//std::cout << "Root reloaded " << rootAdded << std::endl;
-		//mEdgeList.append<Roots::RootAttributes>(rootAdded);
 	}
 
 	std::sort(thicknessList.begin(), thicknessList.end());

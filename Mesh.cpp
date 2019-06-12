@@ -1,5 +1,4 @@
 #include "Mesh.h"
-
 #include <fstream>
 #include <stdio.h>
 #include <iostream>
