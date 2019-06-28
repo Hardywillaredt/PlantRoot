@@ -1,4 +1,6 @@
 #include "BoostSkeleton.h"
+#include <fstream>
+#include <stdio.h>
 
 namespace Roots
 {
@@ -46,6 +48,7 @@ namespace Roots
 		}
 		else if (boost::iequals(line, beginPlyString))
 		{
+			std::cout << "loadDanPly" << std::endl;
 			result = loadDanPly(lines, startingLine);
 		}
 		else
@@ -54,9 +57,31 @@ namespace Roots
 			result = loadPlyStyleLines(lines, startingLine);
 		}
 		
+
 		findBounds();
 		findBoundingSphere();
+
+		
+
 		return result;
+	}
+
+	int BSkeleton::loadFromLines_Binary(FILE *fp)
+	{
+		Initialize();
+		mBoundsFound = false;
+		bool endHeaderReached = false;
+		
+
+		std::cout << "loading vertices " << std::endl;
+		loadVertices_binary(fp);
+		std::cout << "loading edges " << std::endl;
+		loadEdges_binary(fp);
+
+		std::cout << "Finished loading skeleton " << std::endl;
+		findBounds();
+		findBoundingSphere();
+		return 1;
 	}
 
 	void BSkeleton::writeToStream(std::ostream & out)
@@ -138,7 +163,6 @@ namespace Roots
 				while (boost::iequals(words[0], "property"))
 				{
 					boost::split(words, lines[lineOn], boost::is_any_of(" "));
-					
 					if (!boost::iequals(words[0], "property"))
 					{
 						break;
@@ -147,24 +171,30 @@ namespace Roots
 					{
 						mVertexParseOrder[ParsingOrder::Thickness] = propertyPos;
 						mVertexWriteOrder[propertyPos] = ParsingOrder::Thickness;
+						//std::cout << "bt2, mVertexParseOrder[ParsingOrder::Thickness] is " << propertyPos << std::endl;
 					}
 					else if (boost::iequals(words[2], "radius"))
 					{
 						mVertexParseOrder[ParsingOrder::Width] = propertyPos;
 						mVertexWriteOrder[propertyPos] = ParsingOrder::Width;
+						//std::cout << "radius, mVertexParseOrder[ParsingOrder::Width] is " << propertyPos << std::endl;
 					}
 					else if (boost::iequals(words[2], "x"))
 					{
+						
 						mVertexParseOrder[ParsingOrder::X] = propertyPos;
 						mVertexWriteOrder[propertyPos] = ParsingOrder::X;
+						//std::cout << "x, mVertexParseOrder[ParsingOrder::X] is " << propertyPos << std::endl;
 					}
 					else if (boost::iequals(words[2], "y"))
 					{
+						//std::cout << "y, mVertexParseOrder[ParsingOrder::Y] is " << propertyPos << std::endl;
 						mVertexParseOrder[ParsingOrder::Y] = propertyPos;
 						mVertexWriteOrder[propertyPos] = ParsingOrder::Y;
 					}
 					else if (boost::iequals(words[2], "z"))
 					{
+						//std::cout << "z, mVertexParseOrder[ParsingOrder::Z] is " << propertyPos << std::endl;
 						mVertexParseOrder[ParsingOrder::Z] = propertyPos;
 						mVertexWriteOrder[propertyPos] = ParsingOrder::Z;
 					}
@@ -278,15 +308,67 @@ namespace Roots
 	void BSkeleton::loadVertices(std::vector<std::string> &lines, int &lineOn, int numVertices)
 	{
 		std::vector<std::string> words;
-		float vertData[5];
+		float vertData[5] = {};
 		for (int i = 0; i < numVertices; ++i, ++lineOn)
 		{
 			words = {};
 			boost::split(words, lines[lineOn], boost::is_any_of(" "));
 			for (int parsingOrder = 0; parsingOrder < ParsingOrder::ParsingCount; ++parsingOrder)
 			{
+				
 				vertData[parsingOrder] = boost::lexical_cast<float>(words[mVertexParseOrder[(ParsingOrder)parsingOrder]]);
 			}
+			addVertex(Point3d(vertData[0], vertData[1], vertData[2], vertData[3], vertData[4]));
+			
+		}
+		updateGLVertices();
+	}
+
+	void BSkeleton::writeToBinary(std::string filename)
+	{
+		FILE *fp = fopen(filename.data(), "wb");
+		int numVertices =  m_vertices.size();
+
+		fwrite(&numVertices, sizeof(int), 1, fp);
+		skelVertIter vi = boost::vertices(*this);
+		while (vi.first != vi.second)
+		{
+			fwrite(&getVertData(*vi.first), sizeof(float), 5, fp);
+			++vi;
+		}
+
+
+		int numEdges = m_edges.size();
+		fwrite(&numEdges, sizeof(int), 1, fp);
+
+		skelEdgeIter ei = boost::edges(*this);
+		while (ei.first != ei.second)
+		{
+			fwrite(&getEdgeData(*ei.first), sizeof(int), 2, fp);
+			++ei;
+		}
+
+
+
+
+
+		fclose(fp);
+
+
+	}
+
+
+	void BSkeleton::loadVertices_binary(FILE *fp)
+	{
+		int numVertices;
+		std::vector<float>ver;
+		fread(&numVertices, sizeof(int), 1, fp);
+		ver.resize(numVertices * 5);
+		fread(ver.data(), sizeof(float), numVertices * 5, fp);
+
+		for (int i = 0; i < numVertices; ++i)
+		{
+			auto vertData = ver.data() + i * 5;
 			addVertex(Point3d(vertData[0], vertData[1], vertData[2], vertData[3], vertData[4]));
 		}
 		updateGLVertices();
@@ -304,6 +386,31 @@ namespace Roots
 			boost::split(words, lines[lineOn], boost::is_any_of(" "));
 			v0 = boost::lexical_cast<int>(words[0]);
 			v1 = boost::lexical_cast<int>(words[1]);
+
+			if (m_vertices.size() > v1 && m_vertices.size() > v0)
+			{
+				addEdge(v0, v1);
+			}
+		}
+	}
+
+	void BSkeleton::loadEdges_binary(FILE *fp)
+	{
+		std::cout << "Beginning to load edges " << std::endl;
+		
+		int v0, v1;
+		int numEdges;
+		std::vector<int>es;
+
+		fread(&numEdges, sizeof(int), 1, fp);
+		es.resize(numEdges * 2);
+		fread(es.data(), sizeof(int), numEdges * 2, fp);
+
+		for (int i = 0; i < numEdges; ++i)
+		{
+			
+			v0 = es[i * 2];
+			v1 = es[i * 2 + 1];
 
 			if (m_vertices.size() > v1 && m_vertices.size() > v0)
 			{
@@ -336,31 +443,6 @@ namespace Roots
 		}
 	}
 
-	SkelEdge BSkeleton::addEdge(int v0, int v1)
-	{
-		SkelEdge e;
-		bool edgeAdded;
-		boost::tie(e, edgeAdded) = boost::add_edge(v0, v1, *this);
-		if (edgeAdded)
-		{
-			RootAttributes ra = RootAttributes();
-			ra.euclidLength = (operator[](v0) - operator[](v1)).mag();
-			ra.v0id = v0;
-			ra.v1id = v1;
-			operator[](e) = ra;
-			
-		}
-		return e;
-	}
-	SkelVert BSkeleton::addVertex(Point3d pointLocation)
-	{
-		SkelVert v;
-		v = boost::add_vertex(*this);
-		operator[](v) = pointLocation;
-		operator[](v).id = v;
-		mBoundsFound = false;
-		return v;
-	}
 
 	void BSkeleton::updateGLVertices()
 	{
@@ -443,30 +525,11 @@ namespace Roots
 		return;
 	}
 
-	SkelEdge BSkeleton::getEdge(int v0, int v1, bool &exists)
-	{
-		SkelEdge result;
-		boost::tie(result, exists) = boost::edge(v0, v1, *this);
-		return result;
-	}
+	
 
-	RootAttributes& BSkeleton::getEdgeData(int v0, int v1, bool &exists)
-	{
-		SkelEdge temp = getEdge(v0, v1, exists);
-		if (exists)
-		{
-			return getEdgeData(temp);
-		}
-		else
-		{
-			return RootAttributes();
-		}
-	}
+	
 
-	RootAttributes& BSkeleton::getEdgeData(SkelEdge e)
-	{
-		return operator[](e);
-	}
+
 	Point3d& BSkeleton::getVertData(SkelVert v)
 	{
 		return operator[](v);

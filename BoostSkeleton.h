@@ -15,7 +15,7 @@
 
 namespace
 {
-	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, Point3d, Roots::RootAttributes, boost::no_property, boost::listS> BoostSkeleton;
+	typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, Point3d, Roots::RootAttributes, boost::no_property, boost::vecS> BoostSkeleton;
 	typedef boost::graph_traits<BoostSkeleton>::vertex_descriptor SkelVert;
 	typedef boost::graph_traits<BoostSkeleton>::edge_descriptor SkelEdge;
 }
@@ -136,6 +136,16 @@ namespace Roots
 
 		void writeDanPly(std::ostream &out);
 
+		void writeToBinary(std::string filename);
+
+		void loadVertices_binary(FILE *fp);
+
+		void loadEdges_binary(FILE *fp);
+
+		int loadFromLines_Binary(FILE *fp);
+
+
+
 	private:
 		/*
 		Internal load operation for Wenzhen style skeletons.
@@ -167,14 +177,38 @@ namespace Roots
 		alias that both adds the connection between v0 and v1 in the boost graph,
 		and the decoration edge_descriptor for the root attributes
 		*/
-		SkelEdge addEdge(int v0, int v1);
+		inline SkelEdge addEdge(int v0, int v1) {
+
+			SkelEdge e;
+			bool edgeAdded;
+			boost::tie(e, edgeAdded) = boost::add_edge(v0, v1, *this);
+			if (edgeAdded)
+			{
+				RootAttributes ra = RootAttributes();
+				ra.euclidLength = (operator[](v0) - operator[](v1)).mag();
+				ra.v0id = v0;
+				ra.v1id = v1;
+				operator[](e) = ra;
+
+			}
+			return e;
+		
+		}
 
 		/*
 		alias that both adds a new vertex to the boost graph, and adds the decoration
 		vertex_descriptor for the vertex 3d location
 		*/
-		SkelVert addVertex(Point3d pointLocation);
+		inline SkelVert addVertex(Point3d pointLocation) {
 
+			SkelVert v;
+			v = boost::add_vertex(*this);
+			operator[](v) = pointLocation;
+			operator[](v).id = v;
+			mBoundsFound = false;
+			return v;
+		}
+		
 		void updateGLVertices();
 
 		/*vvvvvvvvvvvvvvvvvvvvv GEOMETRIC MANIPULATIONS vvvvvvvvvvvvvvvvvvvvv*/
@@ -208,13 +242,32 @@ namespace Roots
 		/*
 		Finds the edge_iterator for the provided vertex pair (aliases boost::edge(v0, v1, skeleton))
 		*/
-		SkelEdge getEdge(int v0, int v1, bool &exists);
+		// inline for these four functions
+		inline SkelEdge getEdge(int v0, int v1, bool &exists) {
+			SkelEdge result;
+			boost::tie(result, exists) = boost::edge(v0, v1, *this);
+			return result;
+		}
 
-		RootAttributes& getEdgeData(int v0, int v1, bool &exists);
+		 inline RootAttributes& getEdgeData(int v0, int v1, bool &exists)
+		 {
+			 SkelEdge temp = getEdge(v0, v1, exists);
+			 if (exists)
+			 {
+				 return getEdgeData(temp);
+			 }
+			 else
+			 {
+				 return RootAttributes();
+			 }
+		 }
 
-		RootAttributes& getEdgeData(SkelEdge e);
+		 inline RootAttributes& getEdgeData(SkelEdge e)
+		 {
+			 return operator[](e);
+		 }
 
-		Point3d& getVertData(SkelVert v);
+		 Point3d& getVertData(SkelVert v);
 
 		/*
 		Finds all vertices of degree != 2

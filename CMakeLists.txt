@@ -13,18 +13,18 @@ file(GLOB Roots_src
 )
 
 
-# set(BOOST_INCLUDEDIR D:/programs/boost_1_65_1/boost_1_65_1/boost_1_65_1/boost CACHE PATH "Boost header directory" FORCE)
-# set(BOOST_ROOT D:/programs/boost_1_65_1/boost_1_65_1/boost_1_65_1 CACHE PATH "Boost root directory" FORCE)
+set(BOOST_INCLUDEDIR D:/programs/boost_1_65_1/boost_1_65_1/boost_1_65_1/boost CACHE PATH "Boost header directory" FORCE)
+set(BOOST_ROOT D:/programs/boost_1_65_1/boost_1_65_1/boost_1_65_1 CACHE PATH "Boost root directory" FORCE)
 
-# set(GLFW_INCLUDEDIR D:/dev/programs/glfw-3.2.1/glfw-3.2.1/include CACHE PATH "GLFW include directory")
-# set(GLFW_LIB D:/dev/programs/glfw-3.2.1/glfw-3.2.1/glfw-build/src/Debug/glfw3.lib CACHE STRING "glfw compiled library")
-# set(GLAD_INCLUDEDIR D:/dev/programs/glad/include CACHE PATH "GLAD include directory")
+set(GLFW_INCLUDEDIR D:/dev/programs/glfw-3.2.1/glfw-3.2.1/include CACHE PATH "GLFW include directory")
+set(GLFW_LIB D:/dev/programs/glfw-3.2.1/glfw-3.2.1/glfw-build/src/Debug/glfw3.lib CACHE STRING "glfw compiled library")
+set(GLAD_INCLUDEDIR D:/dev/programs/glad/include CACHE PATH "GLAD include directory")
 
-# set(BoostPythonLib D:/dev/school/rootsProject/SupportLibs/boostPython.lib CACHE STRING "boost python library")
+set(BoostPythonLib D:/dev/school/rootsProject/SupportLibs/boostPython.lib CACHE STRING "boost python library")
 
-# set(OpenCV_DIR D:/dev/programs/opencv/build CACHE PATH "Opencv Include")
-# set(OpenCV_VERSION "3.4.2" CACHE STRING "OpenCV installation version")
-# option(OPENCV_ENABLE "description" ON)
+set(OpenCV_DIR D:/dev/programs/opencv/build CACHE PATH "Opencv Include")
+set(OpenCV_VERSION "3.4.2" CACHE STRING "OpenCV installation version")
+option(OPENCV_ENABLE "description" ON)
 
 set(BOOST_INCLUDEDIR E:/will/boost_1_65_1/boost CACHE PATH "Boost header directory" FORCE)
 set(BOOST_ROOT E:/will/boost_1_65_1 CACHE PATH "Boost root directory" FORCE)

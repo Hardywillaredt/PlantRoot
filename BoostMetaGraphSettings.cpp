@@ -65,8 +65,10 @@ namespace Roots
 			edgeOptions.heatmap.push_back(vectorColor);
 		}
 		metaEdgeIter mei = boost::edges(*this);
+		std::cout << "!!!!!!!!!!!max Thickness before updateCorlor is " << MinMaxStruct::maxThickness << std::endl;
 		for (;mei.first != mei.second; ++mei)
 		{
+			//std::cout << "max thickness is " << MinMaxStruct::maxThickness << std::endl; 1000
 			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
 
@@ -357,6 +359,12 @@ namespace Roots
 		buildEdgeVBOs();
 	}
 	
+	void BMetaGraph::setDisplayBranch(bool doShowBranch) {
+		std::cout << "display branch" << std::endl;
+		showBranch = doShowBranch;
+		std::cout << "showBranch is " << showBranch << std::endl;
+		buildEdgeVBOs();
+	}
 	void BMetaGraph::setDisplaySuggestedStem(bool doShow)
 	{
 		showSuggestedStem = doShow;
@@ -372,7 +380,7 @@ namespace Roots
 	void BMetaGraph::setDisplaySuggestedNode(bool doShow)
 	{
 		showSuggestedNode = doShow;
-		buildEdgeVBOs();
+		//buildEdgeVBOs();
 	}
 
 	void BMetaGraph::setCurrentPrimaryNode(int node)
@@ -629,7 +637,21 @@ namespace Roots
 
 			glEnable(GL_DEPTH_TEST);
 		}
+		//std::cout << "sorghumBranchVBO.size() is " << sorghumBranchVBO.size() << " and showBranch is " << showBranch << std::endl;
+		if (sorghumBranchVBO.size() > 0 && showBranch)
+		{
+			
+			glDisable(GL_DEPTH_TEST);
 
+			std::vector<float> testColor(mSkeleton.glVertices.size(), 1);
+
+			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
+			glColorPointer(3, GL_FLOAT, 0, testColor.data());
+
+			glDrawElements(GL_LINES, sorghumBranchVBO.size(), GL_UNSIGNED_INT, &sorghumBranchVBO[0]);
+
+			glEnable(GL_DEPTH_TEST);
+		}
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glDisableClientState(GL_COLOR_ARRAY);
 	}

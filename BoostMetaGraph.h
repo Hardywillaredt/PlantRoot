@@ -9,7 +9,7 @@
 #include <map>
 #include "Sphere.h"
 #include "Mesh.h"
-
+#include "Sorghum.h"
 
 typedef GLuint GLLineIndex;
 typedef GLuint GLVertexIndex;
@@ -228,8 +228,9 @@ namespace Roots{
 	{
 		/*vvvvvvvvvvvvvvvvvvvvv MEMBER VARIABLES vvvvvvvvvvvvvvvvvvvvv*/
 		//the skeleton from which this metagraph is constructed
+		Sorghum sorghum;
 		BSkeleton mSkeleton;
-
+		
 		//map between skeleton vertices and their corresponding metanodes
 		std::map<SkelVert, MetaV> vertNodeMap;
 
@@ -268,7 +269,7 @@ namespace Roots{
 		std::vector<GLuint> stemVBO;
 
 		std::vector<GLuint> autoStemVBO;
-
+		std::vector<GLuint> sorghumBranchVBO;
 		std::vector<GLuint> testVBO; // use for debug
 		GLfloat selectionColor[4];
 		float eyeShiftX, eyeShiftY;
@@ -307,10 +308,11 @@ namespace Roots{
 
 		bool showSuggestedStem;
 		bool showStem;
+		bool showBranch;
 		std::vector<MetaE> StemPath;
 		std::vector<MetaV> StemPath_node;
 		std::vector<SkelEdge> auto_stem;
-		
+
 		MetaV selectStemStart, selectStemEnd;
 		bool selectStemStartValid, selectStemEndValid;
 		bool stemSelected;
@@ -447,6 +449,7 @@ namespace Roots{
 		void setShowBoundingBoxes(bool doShow);
 
 		void setDisplayStem(bool doShowStem);
+		void setDisplayBranch(bool doShowBranch);
 		void setDisplaySuggestedStem(bool doShow);
 		void setDisplayPrimaryNodes(bool doShowPriamryStem);
 		void setDisplaySuggestedNode(bool doShow);
@@ -469,6 +472,7 @@ namespace Roots{
 		void startRotation(int mx, int my);
 		void mouseMoved(int mx, int my, float zoom);
 		void setZoom(float rad, float eyex, float eyey, float eyez, float upx, float upy, float upz);
+		void writeToBinary(std::string filename);
 
 	private:
 		float DistanceFromPointToLine(MetaV point, MetaV line1, MetaV line2);
@@ -495,7 +499,7 @@ namespace Roots{
 
 		bool pickNewViewCenter(int mouseX, int mouseY);
 		void changeRotationSpeed(bool increase);
-
+		void runSorghumAlgorithm();
 
 
 	private:
@@ -578,12 +582,19 @@ namespace Roots{
 		void writeToStream(std::ostream &out);
 
 		/*
-		Traits load save operation
+		Traits 
+		save operation
 		*/
 		void loadTraitsFromFile(std::string filename);
 		int loadTraitsFromLines(std::vector<std::string> &lines, int startingLine);
 
 		void saveTraitsToFile(std::string filename);
+
+
+		int loadFromLines_Binary(FILE *fp);
+		//void loadFromFile_Binary(std::string filename);
+
+		int loadSkeletonFromLines_Binary(FILE *fp);
 
 	private:
 		/*
@@ -658,7 +669,7 @@ namespace Roots{
 		component map sorted by their size (eg. component 0 is the largest component)
 		*/
 		void findAndLabelConnectedComponents();
-
+		void setSorghumBranchParameters(int minBranchSize, int maxBranchSize, float radiusTolerance, float tipAngleThresh, float tortuosityThresh);
 		/*
 		Iterates over all vertices, and on each vertex belonging to one of the provided components,
 		stores their mapped component id as the lower id between the two components 
@@ -733,6 +744,7 @@ namespace Roots{
 		within the MST
 		*/
 		void FindStemOperation(float lowThreshold);
+		void sorghumBranchOperation();
 		float getEdgeEuclidLength(SkelEdge srcId, BSkeleton *skel);
 		float getVertThickness(SkelVert srcId, BSkeleton *skel);
 		float getVertWidth(SkelVert srcId, BSkeleton *skel);
