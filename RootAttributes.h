@@ -23,7 +23,6 @@ namespace Roots
 	public:
 		int v0id, v1id;
 		float euclidLength;
-
 		friend std::ostream& operator<<(std::ostream &out, const RootAttributes &attribs);
 		friend std::istream& operator>>(std::istream &in, RootAttributes &attribs);
 

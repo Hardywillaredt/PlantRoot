@@ -8,6 +8,8 @@ namespace Roots
 	{
 		show = true;
 		scale = 1.0;
+		branchScale =1.0;
+		stemScale = 1.0;
 		magnifyNonBridges = false;
 		showOnlyNonBridges = false;
 		minColorCutoff = 0.0;
@@ -36,7 +38,15 @@ namespace Roots
 		edgeOptions.scale = scale;
 		std::cout << "Set edge scale " << scale << std::endl;
 	}
+	void BMetaGraph::setBranchScale(float scale) {
+		edgeOptions.branchScale = scale;
+		std::cout << "set branch scale " << scale << std::endl;
 
+	}
+	void BMetaGraph::setStemScale(float scale) {
+		edgeOptions.stemScale = scale;
+		std::cout << "set stem scale " << scale << std::endl;
+	}
 	void BMetaGraph::magnifyNonBridges(bool doMagnify)
 	{
 		edgeOptions.magnifyNonBridges = doMagnify;
@@ -121,10 +131,18 @@ namespace Roots
 	}
 
 	void BMetaGraph::setEdgeSelectionColor(float r, float g, float b)
-	{
-		edgeOptions.flatSelectionColor[0] = r;
+	{ 
+		//stemColors.resize(mSkeleton.glVertices.size()*3);
+		//for (int i = 0; i < stemColors.size()/3; i+=3) {
+		//	
+		//	stemColors[3 * i + 0] = r;
+		//	stemColors[3 * i + 1] = g;
+		//	stemColors[3 * i + 2] = b;
+		//	
+		//}
+		/*edgeOptions.flatSelectionColor[0] = r;
 		edgeOptions.flatSelectionColor[1] = g;
-		edgeOptions.flatSelectionColor[2] = b;
+		edgeOptions.flatSelectionColor[2] = b;*/
 		return;
 	}
 
@@ -461,14 +479,15 @@ namespace Roots
 			colorArray = &vertexColors[0][0];
 			break;
 		}
-
+		
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_COLOR_ARRAY);
 		glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
 		glColorPointer(3, GL_FLOAT, 0, colorArray);
 
 		if (selectionVBO.size() > 0)
-		{
+		{   
+			
 			glLineWidth(edgeOptions.scale * edgeSelectionScaling);
 			glDrawElements(GL_LINES, selectionVBO.size(), GL_UNSIGNED_INT, &selectionVBO[0]);
 		}
@@ -632,9 +651,9 @@ namespace Roots
 			
 			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
 			glColorPointer(3, GL_FLOAT, 0, testColor.data());
-			
+			//glColorPointer(3, GL_FLOAT, 0, testColor.data());
+			glLineWidth(edgeOptions.stemScale);
 			glDrawElements(GL_LINES, autoStemVBO.size(), GL_UNSIGNED_INT, &autoStemVBO[0]);
-
 			glEnable(GL_DEPTH_TEST);
 		}
 		//std::cout << "sorghumBranchVBO.size() is " << sorghumBranchVBO.size() << " and showBranch is " << showBranch << std::endl;
@@ -646,9 +665,23 @@ namespace Roots
 			std::vector<float> testColor(mSkeleton.glVertices.size(), 1);
 
 			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
-			glColorPointer(3, GL_FLOAT, 0, testColor.data());
-
+			glColorPointer(3, GL_FLOAT, 0,testColor.data());
+			glLineWidth(edgeOptions.branchScale);
 			glDrawElements(GL_LINES, sorghumBranchVBO.size(), GL_UNSIGNED_INT, &sorghumBranchVBO[0]);
+
+			glEnable(GL_DEPTH_TEST);
+			
+			
+		}
+		if (showTest) {
+			glDisable(GL_DEPTH_TEST);
+
+			std::vector<float> testColor(mSkeleton.glVertices.size(), 1);
+
+			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
+			glColorPointer(3, GL_FLOAT, 0, testColor.data());
+			glLineWidth(edgeOptions.branchScale);
+			glDrawElements(GL_LINES, testVBO.size(), GL_UNSIGNED_INT, &testVBO[0]);
 
 			glEnable(GL_DEPTH_TEST);
 		}

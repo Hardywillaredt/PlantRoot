@@ -492,12 +492,18 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 	ply::PLYreader ply_reader;
 	cout << " before reading " << endl;
 	string tmp =  inFile;
-	string test = "C:\\Users\\yuewu767\\Downloads\\Input-20190528T172449Z-001\\sap1201Downsampled4Threshold75_skelSmoothed2.ply";
-	char* fileN = &tmp[0u];
-	char* f = &test[0u];
-	if (ply_reader.read(f, v_props_map, e_props_map, f_props_map, vts, edges, faces) != ply::SUCCESS)
+	size_t lastdot = inFile.find_last_of('.');
+	std::cout << "lastdot is " << lastdot << std::endl;
+	std::string ext = inFile.substr(lastdot, inFile.size() - lastdot);
+	if (ext == ".dat") {
+		inFile.erase(lastdot, inFile.size() - lastdot);
+	}
+	//string test = "C:\\Users\\yuewu767\\Downloads\\Input-20190528T172449Z-001\\sap1201Downsampled4Threshold75_skelSmoothed2.ply";
+	char* fileN = &inFile[0u];
+	//char* f = &test[0u];
+	if (ply_reader.read(fileN, v_props_map, e_props_map, f_props_map, vts, edges, faces) != ply::SUCCESS)
 	{
-		cout <<"read failed, filename is "<<f<< std::endl;
+		cout <<"read failed, filename is "<<fileN<< std::endl;
 		
 	}
 
@@ -564,14 +570,14 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 		vector<int> vFaces;
 		vertexFaces.push_back(vFaces);
 	}
-	for (int i = 0; i < faces.size(); i++) {//faces ??
+	for (int i = 0; i < faces.size(); i++) {
 		vertexFaces[faces[i].verts[0]].push_back(i);
 		vertexFaces[faces[i].verts[1]].push_back(i);
 		vertexFaces[faces[i].verts[2]].push_back(i);
 
 	}
 	map<int, bool> visitedFaceVertices;
-	for (int i = 0; i < faces.size(); i++) {//
+	for (int i = 0; i < faces.size(); i++) {//if there's a surface, make the surface to a single point
 		for (int j = 0; j < 3; j++) {
 			vector<int> connectedEdgeVts;
 			if (visitedFaceVertices.find(faces[i].verts[j]) == visitedFaceVertices.end()) {
@@ -594,7 +600,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 
 
 						vector<int> adjFaces = vertexFaces[currentVertex];
-						for (int k = 0; k < adjFaces.size(); k++) {
+						for (int k = 0; k < adjFaces.size(); k++) {//vertices adjacent to currentVetex(connected by faces)
 							for (int l = 0; l < 3; l++) {
 								if (faces[adjFaces[k]].verts[l] != currentVertex) {
 									faceCompQ.push(faces[adjFaces[k]].verts[l]);
@@ -647,7 +653,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 
 	std::map<vector<float>, int> vertIndex;
 	int maxRadiusVtIndex = 0;
-	for (int i = 0; i < vts.size(); i++) {
+	for (int i = 0; i < vts.size(); i++) {//in diameter if radius > upperRadiiThresh
 		if (vts[i].radius > upperRadiiThresh) {
 			vts[i].inDiameter = 1;
 		}
@@ -666,7 +672,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 	std::vector<int> edgeComps;
 	//Find vertices with radius greater than upperRadiiThresh, and perform BFS to find high radius connected component starting from that vertex
 	for (int i = 0; i < vts.size(); i++) {
-		vertIndex[{vts[i].x, vts[i].y, vts[i].z}] = i; //Can ignore
+		//vertIndex[{vts[i].x, vts[i].y, vts[i].z}] = i; //Can ignore
 		//If haven't visited this vertex yet and above upperRadiiThresh, begin new component
 		if (connectedVertexComponents.find(i) == connectedVertexComponents.end()) {
 			if (vts[i].radius > upperRadiiThresh) {
@@ -724,7 +730,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 	E* edgePairs = new E[stemEdges.size()];
 	map<E, float> edgeWeightMap;
 	map<int, int> stemToOrigVertexMapping;
-	for (int i = 0; i < stemEdges.size(); i++) {
+	for (int i = 0; i < stemEdges.size(); i++) {//map from old stem vertices to new stem vertices, cretae new graph based on stem vertices and edges and weights
 		if (oldToNewVtIndex.find(edges[stemEdges[i]].v1) == oldToNewVtIndex.end()) {
 			oldToNewVtIndex[edges[stemEdges[i]].v1] = stemVertices.size();
 			stemToOrigVertexMapping[stemVertices.size()] = edges[stemEdges[i]].v1;
@@ -755,7 +761,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 		}
 	}
 
-	std::cout << "reach point 5" << std::endl;
+	std::cout << "reach point 4" << std::endl;
 #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
 	Graph g(vts.size());
 	property_map<Graph, edge_weight_t>::type weightmap = get(edge_weight, g);
@@ -767,18 +773,20 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 #else
 
 	Graph g(edgePairs, edgePairs + stemEdges.size(), weights, stemVertices.size());
+	std::cout << "here 1" << std::endl;
 #endif
 	std::vector < Edge > spanning_tree;
 	map<int, int> vertBurnTimes;
 	kruskal_minimum_spanning_tree(g, std::back_inserter(spanning_tree));
-
+	std::cout << "here 2" << std::endl;
 	stemEdges.clear(); stemEdges.shrink_to_fit();
 
 	float * mstWeights = new float[spanning_tree.size()];
 	E * spanningTreeEdges = new E[spanning_tree.size()];
-
+	std::cout << "here 3" << std::endl;
 
 	vector< vector<E> > mstVertEdges(vts.size());
+	std::cout << "spanning_tree.size() is " << spanning_tree.size() << std::endl;
 	for (int i = 0; i < spanning_tree.size(); i++) {
 		E edge = E(source(spanning_tree[i], g), target(spanning_tree[i], g));
 		spanningTreeEdges[i] = edge;
@@ -787,12 +795,13 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 		mstVertEdges[target(spanning_tree[i], g)].push_back(edge);
 	}
 
-
+	std::cout << "here 4" << std::endl;
 	//Minimum spanning tree of high radius region -> this is a boost object
 	Graph mst(spanningTreeEdges, spanningTreeEdges + spanning_tree.size(), mstWeights, stemVertices.size());
+	std::cout << "here 5" << std::endl;
 	//Temporary structure to keep track of edges during burning process
 	Graph subGraph = mst;
-
+	std::cout << "reach point 5" << std::endl;
 	//Start burning process
 	bool burnable = true;
 	int burnRound = 0;
@@ -850,11 +859,11 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 		burnRound += 1;
 
 	}
-
+	std::cout << "reach point 6" << std::endl;
 	//Start inverse burn
 	Graph diameterGraph;
 
-	vector<E> diameterEdgeVec = burnRoundMapping[burnRound - 1];//?
+	vector<E> diameterEdgeVec = burnRoundMapping[burnRound - 1];
 	burnRound -= 1;
 
 	//Find the vertices which were burned this round. These are the endpoints of the current iteration to expand the stem from
@@ -941,9 +950,9 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 		seedVertices = nextSeedVertices;
 		burnRound -= 1;
 	}
-
-	if (oldToNewVtIndex.find(highestRadEndPt) == oldToNewVtIndex.end()) {//see if the thickest point is in stem vector
-		//Highest radius not even in MST, so not even in stem
+	std::cout << "reach point 7" << std::endl;
+	if (oldToNewVtIndex.find(highestRadEndPt) == oldToNewVtIndex.end()) {//see if the thickest endpoint is in stem vector
+		//Highest radius not even in stem, so not in MST
 		oldToNewVtIndex[highestRadEndPt] = stemVertices.size();
 		stemToOrigVertexMapping[stemVertices.size()] = highestRadEndPt;
 		stemVertices.push_back(vts[highestRadEndPt]);
@@ -993,7 +1002,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 			}
 
 		}
-		if (vertexInDiameter.find(currentVtx) != vertexInDiameter.end()) {//currentVertx is connected to thickest vertex and is in vertexInDiameter
+		if (vertexInDiameter.find(currentVtx) != vertexInDiameter.end()) {//currentVertex is connected to thickest vertex and is in vertexInDiameter
 			while (currentVtx != oldToNewVtIndex[highestRadEndPt]) {
 				if (vertexInDiameter.find(currentVtx) == vertexInDiameter.end()) {
 					diameterVts.push_back(currentVtx);
@@ -1018,7 +1027,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 
 	}
 
-	std::cout << "reach point 6" << std::endl;
+	std::cout << "reach point 8" << std::endl;
 	//alglib::real_2d_array ptInput;
 	//Find distances from highest radius point to all other points
 	cout << "Forcing highest radius endpoint to be on stem" << endl;
@@ -1194,16 +1203,6 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 					vector<float> tipLengths;
 
 					seedBranches = buildBranchesFromVertexForwardBFS(junctionIndex, vertexInDiameterVec, edges, vertEdgesVec, vts, visitedVts, branchSizeMin, curvatureWindow, maxBranchLength, center, lastLoop, radiusTol, emergenceAngleThresh, tipAngleThresh, tortuosityThresh, stemVec, emergenceAngles, tipAngles, branchLengths, tipLengths, emergenceLowerRadius, emergeWindow);
-					//std::cout << "start pushing" << std::endl;
-					//std::cout << "seedBranches size is " << seedBranches.size() << std::endl;
-					//for (vector<int> subB : seedBranches) {
-					//	for (int i : subB) {
-					//		/*std::wcout << "in!" << std::endl;*/
-					//		sorghumBranchVBO.push_back(i);
-					//	}
-					//}
-					//
-					/*std::cout << "sorghumBranchVBO.size() is" << sorghumBranchVBO.size() << std::endl;*/
 					for (int k = 0; k < seedBranches.size(); k++) {
 						vector<int> seedBranchEdges = seedBranches[k];
 
@@ -1277,7 +1276,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 	avgTipAngle /= branchN;
 	avgEmergenceAngle /= branchN;
 
-	std::cout << "reach point 7" << std::endl;
+	std::cout << "reach point 9" << std::endl;
 	if (seedJunctionDistances.size() > 0) {
 		//Find first and 2nd longest internode lengths
 		std::sort(seedJunctionDistances.begin(), seedJunctionDistances.end());
@@ -1338,7 +1337,7 @@ int Sorghum::sorghumAlgorithm(std::vector<GLuint> &sorghumBranchVBO)
 			stemAndDiameterEdgesOut.push_back(e);
 		}
 	}
-	std::cout << "reach point 8" << std::endl;
+	std::cout << "reach point 10" << std::endl;
 	std::cout << "sorghumBranchVBO.size() is " << sorghumBranchVBO.size() << std::endl;
 	return 0;
 }
