@@ -169,14 +169,14 @@ namespace Roots
 					}
 					if (boost::iequals(words[2], "bt2"))
 					{
-						mVertexParseOrder[ParsingOrder::Thickness] = propertyPos;
-						mVertexWriteOrder[propertyPos] = ParsingOrder::Thickness;
+						mVertexParseOrder[ParsingOrder::Width] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::Width;
 						//std::cout << "bt2, mVertexParseOrder[ParsingOrder::Thickness] is " << propertyPos << std::endl;
 					}
 					else if (boost::iequals(words[2], "radius"))
 					{
-						mVertexParseOrder[ParsingOrder::Width] = propertyPos;
-						mVertexWriteOrder[propertyPos] = ParsingOrder::Width;
+						mVertexParseOrder[ParsingOrder::Thickness] = propertyPos;
+						mVertexWriteOrder[propertyPos] = ParsingOrder::Thickness;
 						//std::cout << "radius, mVertexParseOrder[ParsingOrder::Width] is " << propertyPos << std::endl;
 					}
 					else if (boost::iequals(words[2], "x"))
@@ -221,8 +221,8 @@ namespace Roots
 		loadVertices(lines, lineOn, numVertices);
 		std::cout << "loading edges " << std::endl;
 		loadEdges(lines, lineOn, numEdges);
-		std::cout << "loading faces " << std::endl;
-		loadFaces(lines, lineOn, numFaces);
+		/*std::cout << "loading faces " << std::endl;
+		loadFaces(lines, lineOn, numFaces);*/
 		std::cout << "Finished loading skeleton " << std::endl;
 		
 
@@ -347,10 +347,6 @@ namespace Roots
 			fwrite(&getEdgeData(*ei.first), sizeof(int), 2, fp);
 			++ei;
 		}
-
-
-
-
 
 		fclose(fp);
 

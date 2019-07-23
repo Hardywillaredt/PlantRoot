@@ -75,10 +75,9 @@ namespace Roots
 			edgeOptions.heatmap.push_back(vectorColor);
 		}
 		metaEdgeIter mei = boost::edges(*this);
-		std::cout << "!!!!!!!!!!!max Thickness before updateCorlor is " << MinMaxStruct::maxThickness << std::endl;
 		for (;mei.first != mei.second; ++mei)
 		{
-			//std::cout << "max thickness is " << MinMaxStruct::maxThickness << std::endl; 1000
+			
 			operator[](*mei.first).updateColors(edgeOptions, vertexColors, &mSkeleton);
 		}
 
@@ -380,7 +379,8 @@ namespace Roots
 	void BMetaGraph::setDisplayBranch(bool doShowBranch) {
 		std::cout << "display branch" << std::endl;
 		showBranch = doShowBranch;
-		std::cout << "showBranch is " << showBranch << std::endl;
+		showTest = doShowBranch;
+		std::cout << "showTest is " << showBranch << std::endl;
 		buildEdgeVBOs();
 	}
 	void BMetaGraph::setDisplaySuggestedStem(bool doShow)
@@ -510,7 +510,7 @@ namespace Roots
 				glDrawElements(GL_LINES, nonBridgeVBO.size(), GL_UNSIGNED_INT, &nonBridgeVBO[0]);
 			}
 
-			// show non-loop
+		//	// show non-loop
 			if (!edgeOptions.showOnlyNonBridges && bridgeVBO.size() > 0)
 			{
 				glLineWidth(edgeOptions.scale);
@@ -656,23 +656,23 @@ namespace Roots
 			glDrawElements(GL_LINES, autoStemVBO.size(), GL_UNSIGNED_INT, &autoStemVBO[0]);
 			glEnable(GL_DEPTH_TEST);
 		}
-		//std::cout << "sorghumBranchVBO.size() is " << sorghumBranchVBO.size() << " and showBranch is " << showBranch << std::endl;
-		if (sorghumBranchVBO.size() > 0 && showBranch)
-		{
-			
-			glDisable(GL_DEPTH_TEST);
+		//
+		//if (sorghumBranchVBO.size() > 0 && showBranch)
+		//{
+		//	
+		//	glDisable(GL_DEPTH_TEST);
 
-			std::vector<float> testColor(mSkeleton.glVertices.size(), 1);
+		//	std::vector<float> testColor(mSkeleton.glVertices.size(), 1);
 
-			glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
-			glColorPointer(3, GL_FLOAT, 0,testColor.data());
-			glLineWidth(edgeOptions.branchScale);
-			glDrawElements(GL_LINES, sorghumBranchVBO.size(), GL_UNSIGNED_INT, &sorghumBranchVBO[0]);
+		//	glVertexPointer(3, GL_FLOAT, 0, &mSkeleton.glVertices[0]);
+		//	glColorPointer(3, GL_FLOAT, 0,testColor.data());
+		//	glLineWidth(edgeOptions.branchScale);
+		//	glDrawElements(GL_LINES, sorghumBranchVBO.size(), GL_UNSIGNED_INT, &sorghumBranchVBO[0]);
 
-			glEnable(GL_DEPTH_TEST);
-			
-			
-		}
+		//	glEnable(GL_DEPTH_TEST);
+		//	
+		//	
+		//}
 		if (showTest) {
 			glDisable(GL_DEPTH_TEST);
 

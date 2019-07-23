@@ -151,19 +151,19 @@ namespace Roots
 		MinMaxStruct::minDegree = std::min(degree, MinMaxStruct::minDegree);
 		MinMaxStruct::maxDegree = std::max(degree, MinMaxStruct::maxDegree);
 
-		MinMaxStruct::minThickness = std::min(skel->operator[](srcId).thickness(), MinMaxStruct::minThickness);
-		if (skel->operator[](srcId).thickness() != (float)1000) {
-			MinMaxStruct::maxThickness = std::max(skel->operator[](srcId).thickness(), MinMaxStruct::maxThickness);
-		}
+		//MinMaxStruct::minThickness = std::min(skel->operator[](srcId).thickness(), MinMaxStruct::minThickness);
+		//if (skel->operator[](srcId).thickness() != (float)1000) {
+		//	MinMaxStruct::maxThickness = std::max(skel->operator[](srcId).thickness(), MinMaxStruct::maxThickness);
+		//}
 
-		MinMaxStruct::minWidth = std::min(skel->operator[](srcId).width(), MinMaxStruct::minWidth);
-		MinMaxStruct::maxWidth = std::max(skel->operator[](srcId).width(), MinMaxStruct::maxWidth);
+		//MinMaxStruct::minWidth = std::min(skel->operator[](srcId).width(), MinMaxStruct::minWidth);
+		//MinMaxStruct::maxWidth = std::max(skel->operator[](srcId).width(), MinMaxStruct::maxWidth);
 
-		float ratio = skel->operator[](srcId).thickness() / skel->operator[](srcId).width();
+		/*float ratio = skel->operator[](srcId).thickness() / skel->operator[](srcId).width();
 
 		MinMaxStruct::minRatio = std::min(ratio, MinMaxStruct::minRatio);
 		MinMaxStruct::maxRatio = std::max(ratio, MinMaxStruct::maxRatio);
-
+*/
 
 		for (int i = 0; i < 4; ++i)
 		{
@@ -257,6 +257,7 @@ namespace Roots
 		localComponentColors = {};
 		averageThickness = 0.0;
 		averageWidth = 0.0;
+		averageRatio = 0.0;
 		mLength = 0.0;
 		isBridge = false;
 		isSelected = false;
@@ -279,6 +280,7 @@ namespace Roots
 		localComponentColors = {};
 		float weightedAvgThickness = 0.0;
 		float weightedAvgWidth = 0.0;
+		float weightedAvgRatio = 0.0;
 		float skelEdgeLength = 0.0;
 		averageThickness = 0.0;
 		averageWidth = 0.0;
@@ -304,6 +306,7 @@ namespace Roots
 				float length = skelRootAttributes.euclidLength;
 				weightedAvgThickness += p0->thickness() * length;
 				weightedAvgWidth += p0->width() * length;
+				weightedAvgRatio += p0->ratio()*length;
 				skelEdgeLength += length;
 				indicesList.push_back(v0);
 				indicesList.push_back(v1);
@@ -319,7 +322,9 @@ namespace Roots
 			skelEdgeLength = 1;
 		}
 		averageThickness = weightedAvgThickness / skelEdgeLength;
-
+		float shortestDist = (srcSkeleton->operator[](mVertices[0]) - srcSkeleton->operator[](mVertices[mVertices.size() - 1])).mag();
+		sinuosity = skelEdgeLength / shortestDist;
+		
 		if (isnan(averageThickness))
 		{
 			averageThickness = 1.0;
@@ -327,6 +332,7 @@ namespace Roots
 		}
 
 		averageWidth = weightedAvgWidth / skelEdgeLength;
+		averageRatio = weightedAvgRatio / skelEdgeLength;
 
 		if (isnan(averageWidth))
 		{
@@ -496,11 +502,13 @@ namespace Roots
 			float thickRatio = ((p.thickness() - MinMaxStruct::minThickness) / (MinMaxStruct::maxThickness - MinMaxStruct::minThickness));
 			float widthRatio = ((p.width() - MinMaxStruct::minWidth) / (MinMaxStruct::maxWidth - MinMaxStruct::minWidth));
 			float ratio = p.ratio();
-			float ratioRatio = ((ratio - MinMaxStruct::minRatio) / (MinMaxStruct::maxRatio - MinMaxStruct::minRatio));
+			float ratioRatio = (ratio - MinMaxStruct::minRatio) / (MinMaxStruct::maxRatio - MinMaxStruct::minRatio);
+			//std::cout << "minRatio is " << MinMaxStruct::minRatio << "maxRatio is " << MinMaxStruct::maxRatio <<" ratio is "<<ratio<< std::endl;
+			//std::cout << "ratioRatio is " << ratioRatio << std::endl;
 			//considering the color cutoffs
 			thickRatio = (thickRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
 			widthRatio = (widthRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);
-			ratioRatio = 1.0 - (ratioRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);// why 1.0-?
+			ratioRatio = (ratioRatio - options.minColorCutoff) / (options.maxColorCutoff - options.minColorCutoff);// why 1.0-?
 			//consider the edges cases, set to 0 if it's below minColorCutoff, set to 1 if it's above maxColorCutoff
 			thickRatio = std::min(1.0f, thickRatio);
 			thickRatio = std::max(0.0f, thickRatio);
@@ -524,7 +532,6 @@ namespace Roots
 			thickpos = std::max(thickpos, 0);
 			widthpos = std::max(widthpos, 0);
 			ratiopos = std::max(ratiopos, 0);
-
 			std::vector<GLfloat> thicknessColor = options.heatmap[thickpos];
 			std::vector<GLfloat> widthColor = options.heatmap[widthpos];
 			std::vector<GLfloat> ratioColor = options.heatmap[ratiopos];
@@ -1045,16 +1052,18 @@ namespace Roots
 			width = p->width();
 			ratio = p->ratio();
 			MinMaxStruct::minThickness = std::min(thickness, MinMaxStruct::minThickness);
-			if (thickness != (float)1000.0) {
-				MinMaxStruct::maxThickness = std::max(thickness, MinMaxStruct::maxThickness);
-			}
+			MinMaxStruct::maxThickness = std::max(thickness, MinMaxStruct::maxThickness);
+			
 			
 			MinMaxStruct::minWidth = std::min(width, MinMaxStruct::minWidth);
-			MinMaxStruct::maxWidth = std::max(width, MinMaxStruct::maxWidth);
-		
+			if (width != 1000) {//dismiss widths =1000
+				MinMaxStruct::maxWidth = std::max(width, MinMaxStruct::maxWidth);
+			}
+			
 			MinMaxStruct::minRatio = std::min(ratio, MinMaxStruct::minRatio);
 			MinMaxStruct::maxRatio = std::max(ratio, MinMaxStruct::maxRatio);
 		}
+		//std::cout << "minRatio is " << MinMaxStruct::minRatio << " max ratio is " << MinMaxStruct::maxRatio << std::endl;
 		bool fileHasMetaInfo = checkHeaderForMetaInfo(lines);
 		std::cout << "file has Meta info? " << fileHasMetaInfo << std::endl;
 		if (fileHasMetaInfo)
@@ -1090,8 +1099,6 @@ namespace Roots
 
 			viewCenter = mSkeleton.mCenter;
 		}
-
-
 		skelVertIter svi = boost::vertices(mSkeleton);
 		float thickness = 0.00001, width = 0.00001, ratio = 0;
 		for (; svi.first != svi.second; ++svi)
@@ -1101,26 +1108,24 @@ namespace Roots
 			width = p->width();
 			ratio = p->ratio();
 			MinMaxStruct::minThickness = std::min(thickness, MinMaxStruct::minThickness);
-			if (thickness != (float)1000.0) {
-				MinMaxStruct::maxThickness = std::max(thickness, MinMaxStruct::maxThickness);
-			}
+			MinMaxStruct::maxThickness = std::max(thickness, MinMaxStruct::maxThickness);
+
 
 			MinMaxStruct::minWidth = std::min(width, MinMaxStruct::minWidth);
-			MinMaxStruct::maxWidth = std::max(width, MinMaxStruct::maxWidth);
+			if (width != 1000) {//dismiss widths =1000
+				MinMaxStruct::maxWidth = std::max(width, MinMaxStruct::maxWidth);
+			}
 
 			MinMaxStruct::minRatio = std::min(ratio, MinMaxStruct::minRatio);
 			MinMaxStruct::maxRatio = std::max(ratio, MinMaxStruct::maxRatio);
 		}
-
-		
-			initializeFromSkeleton();
-
+		std::cout << "minRatio is " << MinMaxStruct::minRatio << " max ratio is " << MinMaxStruct::maxRatio << std::endl;
+	    initializeFromSkeleton();
 		
 		findBridges();
 		std::cout << "Building edge vbos " << std::endl;
 		buildEdgeVBOs();
 		std::cout << "Finished building edge vbos" << std::endl;
-
 		return result;
 	}
 
@@ -1212,7 +1217,64 @@ namespace Roots
 		}
 
 	}
-
+	void BMetaGraph::saveFairedSkeleton(std::string filename) {
+		if (mSkeleton.m_edges.size() == 0) {
+			std::cout << "Error: No skeleton found." << std::endl;
+			return;
+		}
+		if (filename == ""){
+			std::cout<<"Error: invalid filename"<<std::endl;
+			return;
+		}
+		BSkeleton fairedSkeleton = fairSkeleton(mSkeleton, 10);
+		std::cout << std::endl;
+		std::ofstream filestream;
+		filestream.open(filename);
+		filestream << "ply" << std::endl;
+		filestream << "format ascii 1.0" << std::endl;
+		filestream << "element vertex " << fairedSkeleton.m_vertices.size() << std::endl;
+		for (int i = 0; i < ParsingOrder::ParsingCount; ++i)
+		{
+			if (fairedSkeleton.mVertexWriteOrder[i] == ParsingOrder::X)
+			{
+				filestream << "property float32 x" << std::endl;
+			}
+			if (fairedSkeleton.mVertexWriteOrder[i] == ParsingOrder::Y)
+			{
+				filestream << "property float32 y" << std::endl;
+			}
+			if (fairedSkeleton.mVertexWriteOrder[i] == ParsingOrder::Z)
+			{
+				filestream << "property float32 z" << std::endl;
+			}
+			if (fairedSkeleton.mVertexWriteOrder[i] == ParsingOrder::Thickness)
+			{
+				filestream << "property float32 radius" << std::endl;
+			}
+			if (fairedSkeleton.mVertexWriteOrder[i] == ParsingOrder::Width)
+			{
+				filestream << "property float32 bt2" << std::endl;
+			}
+		}
+		filestream << "element edge " << fairedSkeleton.m_edges.size() << std::endl;
+		filestream << "property int32 vertex1" << std::endl;
+		filestream << "property int32 vertex2" << std::endl;
+		filestream << "element face " << fairedSkeleton.faces.size() << std::endl;
+		filestream << "property list uint8 int32 vertex_indices" << std::endl;
+		filestream << "end_header" << std::endl;
+		skelVertIter svi = boost::vertices(fairedSkeleton);
+		for (; svi.first != svi.second; ++svi) {
+			Point3d point = fairedSkeleton.operator[](*svi.first);
+			filestream << point.width() << " " << point.thickness() << " " << point.x() << " " << point.y() << " " << point.z() << std::endl;
+		}
+		skelEdgeIter sei = boost::edges(fairedSkeleton);
+		for (; sei.first != sei.second; ++sei) {
+			SkelEdge se = *sei.first;
+			filestream << se.m_source << " " << se.m_target << std::endl;
+		}
+		filestream.close();
+		std::cout << "File saved: " << filename << std::endl;
+	}
 	void BMetaGraph::loadTraitsFromFile(std::string filename)
 	{
 		InitializeTraitParameters();
@@ -1390,7 +1452,67 @@ namespace Roots
 		}
 		
 	}
+	BSkeleton BMetaGraph::fairSkeleton(BSkeleton skel, int iterationRound) {
+		BSkeleton currSkel = skel;
+		BSkeleton nextSkel = skel;
+		std::cout << "Fairing " << iterationRound << " rounds." << std::endl;
+		std::cout << "Fairing";
 
+		for (int round = 0; round < iterationRound; ++round) {
+			std::cout << ".";
+
+			// For each metaEdge, average each of the skeleton vertices that are not on the ends with the two skeleton vertices connected to it
+			metaEdgeIter mei = boost::edges(*this);
+			for (; mei.first != mei.second; ++mei) {
+				MetaE edge = *mei.first;
+				std::vector<SkelVert> vertices = operator[](edge).mVertices;
+				for (size_t i = 1; i < vertices.size() - 1; ++i) {
+					SkelVert prev = vertices[i - 1];
+					SkelVert curr = vertices[i];
+					SkelVert next = vertices[i + 1];
+					float averagedX = (currSkel.operator[](prev).x() + currSkel.operator[](curr).x() + currSkel.operator[](next).x()) / 3.0f;
+					float averagedY = (currSkel.operator[](prev).y() + currSkel.operator[](curr).y() + currSkel.operator[](next).y()) / 3.0f;
+					float averagedZ = (currSkel.operator[](prev).z() + currSkel.operator[](curr).z() + currSkel.operator[](next).z()) / 3.0f;
+					float averagedThickness = currSkel.operator[](curr).thickness();
+					float averagedWidth = currSkel.operator[](curr).width();
+					Point3d averaged = Point3d(averagedX, averagedY, averagedZ, averagedThickness, averagedWidth, currSkel.operator[](curr).id);
+					nextSkel.operator[](curr) = averaged;
+				}
+			}
+
+			// Average each junction node with all the skeleton vertices around it
+			metaVertIter mvi = boost::vertices(*this);
+			for (; mvi.first != mvi.second; ++mvi) {
+				MetaV vertex = *mvi.first;
+				if (boost::degree(vertex, *this) != 1) {
+					SkelVert curr = operator[](vertex).mSrcVert;
+					int outEdgeNumber = 1;
+					float xAccumulator = currSkel.operator[](curr).x();
+					float yAccumulator = currSkel.operator[](curr).y();
+					float zAccumulator = currSkel.operator[](curr).z();
+					typename graph_traits<BoostSkeleton>::out_edge_iterator ei, ei_end;
+					for (boost::tie(ei, ei_end) = out_edges(curr, currSkel); ei != ei_end; ++ei) {
+						SkelVert target = boost::target(*ei, currSkel);
+						xAccumulator += currSkel.operator[](target).x();
+						yAccumulator += currSkel.operator[](target).y();
+						zAccumulator += currSkel.operator[](target).z();
+						outEdgeNumber++;
+					}
+					float averagedX = xAccumulator / outEdgeNumber;
+					float averagedY = yAccumulator / outEdgeNumber;
+					float averagedZ = zAccumulator / outEdgeNumber;
+					float averagedThickness = currSkel.operator[](curr).thickness();
+					float averagedWidth = currSkel.operator[](curr).width();
+					Point3d averaged = Point3d(averagedX, averagedY, averagedZ, averagedThickness, averagedWidth, currSkel.operator[](curr).id);
+					nextSkel.operator[](curr) = averaged;
+				}
+			}
+
+			// Swap the buffer
+			currSkel = nextSkel;
+		}
+		return currSkel;
+	}
 	int BMetaGraph::loadSkeletonFromLines(std::vector<std::string> &lines, int & startingLine)
 	{
 		return mSkeleton.loadFromLines(lines, startingLine);
@@ -1513,7 +1635,7 @@ namespace Roots
 	{
 		std::cout << "Building metagraph " << std::endl;
 		isLoaded = true;
-		std::vector<SkelVert> nodesOfInterest = mSkeleton.GetNotableVertices(); // vertices with degree = 1 and degree >= 3
+		std::vector<SkelVert> nodesOfInterest = mSkeleton.GetNotableVertices(); // vertices with degree = 1 and degree >= 3 which are either juntions or endpoints
 		std::vector<bool> visitedNodes = std::vector<bool>(mSkeleton.m_vertices.size(), false);
 
 		for each(SkelVert node in nodesOfInterest)
@@ -1837,11 +1959,7 @@ namespace Roots
 
 	}
 
-	//void setSorghumBranchParameters(int minBranchSize, int maxBranchSize, float radiusTolerance, float tipAngleThresh, float tortuosityThresh) {
-	//	if (minBranchSize != -1) {
-	//		sorghum.branchSizeMin = minBranchSize;
-	//	}
-	//};
+
 	void BMetaGraph::findAndLabelConnectedComponents()
 	{
 		std::cout << "===== Finding Connected Components =====" << std::endl;
@@ -2370,32 +2488,128 @@ namespace Roots
 		sorghumBranchVBO = {};
 		sorghum.sorghumAlgorithm(sorghumBranchVBO);
 	}
+	void BMetaGraph::FindSmoothCurves(float maxCurvature, float tortuosity, float ratioRatio,float maxLength) {
+		std::cout << "tortuosity is " << tortuosity << " ratioRatio is " << ratioRatio << " maxLength is " << maxLength << std::endl;
+		testVBO.clear();
+		std::vector<BMetaEdge> smoothMEdges;
+		metaEdgeIter mei = boost::edges(*this);
+		for (; mei.first != mei.second; ++mei)
+		{//calculate third derivative for each meta edge
+			BMetaEdge *edge = &operator[](*mei.first);
+			edge->curvature = -1;//invalid
+			//firs t derivative
+			//std::cout << "sinuosity is " << edge->sinuosity << " length is " << edge->mLength << "averageRatio is " << edge->averageRatio << std::endl;
+			int size = edge->mVertices.size();
+			//both are end points
+			
+			if (size > 0) {
+				if ((boost::degree((edge->mVertices)[0], mSkeleton) == 1) && (boost::degree((edge->mVertices)[size - 1],mSkeleton) == 1)) {
+					continue;
+				}
+			}
+			//calculate curvature
+			if (size > 4) {
+				//calculate curvature using formula from wikipedia
+				std::vector<std::vector<float>> firstD;
+				
+				for (int i =1; i < size - 1; i++) {
+					Point3d pPrev = mSkeleton.operator[]((edge->mVertices)[i - 1]);
+					Point3d p = mSkeleton.operator[](edge->mVertices[i]);
+					Point3d pNext = mSkeleton.operator[](edge->mVertices[i + 1]);
+					SkelEdge e1 = boost::edge(pPrev.id, p.id, mSkeleton).first;
+					SkelEdge e2 = boost::edge(p.id, pNext.id, mSkeleton).first;
+					RootAttributes edgeA1 = mSkeleton.operator[](e1);
+					RootAttributes edgeA2 = mSkeleton.operator[](e2);
+					//weighted first derivative
+					float xprime = ((p.x() - pPrev.x())/ edgeA1.euclidLength *edgeA1.euclidLength + (pNext.x() - p.x()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float yprime = ((p.y() - pPrev.y()) / edgeA1.euclidLength *edgeA1.euclidLength + (pNext.y() - p.y()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float zprime = ((p.z() - pPrev.z()) / edgeA1.euclidLength *edgeA1.euclidLength + (pNext.z() - p.z()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					firstD.push_back({ xprime,yprime,zprime });
+				}
+				//calculate second derivatives
+				
+				std::vector<std::vector<float>> secondD;
+				for (int j = 2; j < size - 2; j++) {
+					Point3d pPrev = mSkeleton.operator[]((edge->mVertices)[j - 1]);
+					Point3d p = mSkeleton.operator[](edge->mVertices[j]);
+					Point3d pNext = mSkeleton.operator[](edge->mVertices[j + 1]);
+					SkelEdge e1 = boost::edge(pPrev.id, p.id, mSkeleton).first;
+					SkelEdge e2 = boost::edge(p.id, pNext.id, mSkeleton).first;
+					RootAttributes edgeA1 = mSkeleton.operator[](e1);
+					RootAttributes edgeA2 = mSkeleton.operator[](e2);
+					//weighted first derivative
+					float xprime2=((firstD[j-1][0]-firstD[j-2][0])/ edgeA1.euclidLength *edgeA1.euclidLength+(firstD[j][0] - firstD[j-1 ][0])/ edgeA2.euclidLength *edgeA2.euclidLength)/ (edgeA1.euclidLength + edgeA2.euclidLength);
+					float yprime2= ((firstD[j-1][1] - firstD[j - 2][1]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j ][1] - firstD[j-1][1]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float zprime2= ((firstD[j-1][2] - firstD[j - 2][2]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j ][2] - firstD[j-1][2]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					secondD.push_back({ xprime2,yprime2,zprime2 });
+				}
+				
+				
+				float overallCurv = 0;
+				for (int i = 2; i < size - 2; i++) {
+					float k = sqrt(pow(secondD[i-2][2] * firstD[i-2][1] - secondD[i-2][1] * firstD[i-2][2], 2) + pow(secondD[i-2][0] * firstD[i-2][2] - secondD[i-2][2] * firstD[i-2][0], 2) + pow(secondD[i-2][1] * firstD[i-2][0] - secondD[i-2][0] * firstD[i-2][1], 2));
+					k /= pow(pow(firstD[i-2][0], 2) + pow(firstD[i-2][1], 2) + pow(firstD[i-2][2], 2), 1.5);
+					mSkeleton.operator[](edge->mVertices[i]).curvature = k;
+					overallCurv += k;
+				}
+				overallCurv /= (size - 2);
+				edge->curvature = overallCurv;
+				//std::cout << "overallCurv is " << overallCurv << std::endl;
+				
+			}
+			if (edge->curvature > maxCurvature || edge -> curvature == -1) {
+				continue;
+			}
+			float edgeLength = edge->mLength;
+			if (edgeLength < maxLength) {
+				continue;
+			}
+
+			if (edge->sinuosity<0 || edge->sinuosity>tortuosity) {
+				continue;
+			}
+			if (edge->averageRatio > ratioRatio) {
+				continue;
+			}
+			for (RootAttributes skelEdge : edge->mEdges) {
+				testVBO.push_back(skelEdge.v0id);
+				testVBO.push_back(skelEdge.v1id);
+			}
+		}
+		std::cout << "testVBO.size() is " << testVBO.size() << std::endl;
+		std::cout << "find smooth curves end" << std::endl;
+	}
 	void BMetaGraph::FindStemOperation(float lowThreshold)
 	{
 		std::cout << "low threshold " << lowThreshold << std::endl;
 		autoStemVBO.clear();
-		vector<float> edgeWeights;
+		auto_stem.clear();
+		std::vector<float> edgeWeights;
 		// find highest radius
-		float maxWidth = 0.0;
+		float maxThickness = 0.0;
 		skelVertIter svi = boost::vertices(mSkeleton);
-		SkelVert vertMaxWidth; //id for the vertex
+		SkelVert vertMaxThickness; //id for the vertex
+		
 		for (; svi.first != svi.second; ++svi)//find out vertices with highest width and thickness
 		{
+			
 			SkelVert vert = *svi.first;
-			if (getVertWidth(vert, &mSkeleton) > maxWidth)
+			//std::cout << getVertThickness(vert, &mSkeleton) << std::endl;
+			if (getVertThickness(vert, &mSkeleton) > maxThickness)
 			{
-				vertMaxWidth = vert;
-				maxWidth = getVertWidth(vert, &mSkeleton);
+				vertMaxThickness = vert;
+				maxThickness = getVertThickness(vert, &mSkeleton);
 			}
 		}
+		std::cout << "maxThickness is " << vertMaxThickness << std::endl;
 		// BFS to find all vertices whose thickness >= lowThreshold
 		std::vector<bool> visitedMap = std::vector<bool>(mSkeleton.m_vertices.size(), false);
 		//start from vertex with highest width and do BFS
-		visitedMap[vertMaxWidth] = true;
+		visitedMap[vertMaxThickness] = true;
 		std::deque<SkelVert> selectedVert;
-		selectedVert.push_back(vertMaxWidth);
+		selectedVert.push_back(vertMaxThickness);
 		std::deque<SkelVert> queVert;
-		queVert.push_back(vertMaxWidth);
+		queVert.push_back(vertMaxThickness);
 		//BFS to find all vertices
 		while (!queVert.empty())
 		{
@@ -2411,7 +2625,7 @@ namespace Roots
 			{
 				//MetaV leadNode;
 				SkelVert leadVert = *adjIt;
-				if (getVertWidth(leadVert, &mSkeleton) >= lowThreshold && !visitedMap[leadVert])
+				if (getVertThickness(leadVert, &mSkeleton) >= lowThreshold && !visitedMap[leadVert])
 				{
 					visitedMap[leadVert] = true;
 					queVert.push_back(leadVert);
@@ -2504,7 +2718,7 @@ namespace Roots
 			int v1 = stemMinimumSpanningTree[i].m_target;
 			boost::tie(e, success) = boost::add_edge(SkelVertMSTMap[v0], SkelVertMSTMap[v1], mstGraph);
 			std::pair<Edge, bool> edge = boost::edge(SkelVertMSTMap[v0], SkelVertMSTMap[v1], mstGraph);
-			float weight = ((&mSkeleton)->operator[](v0).width() + (&mSkeleton)->operator[](v1).width()) / 2;
+			float weight = ((&mSkeleton)->operator[](v0).thickness() + (&mSkeleton)->operator[](v1).thickness()) / 2;
 			//std::cout << weight << std::endl;
 			boost::put(boost::edge_weight_t(), mstGraph, edge.first, weight);
 
@@ -2722,69 +2936,8 @@ namespace Roots
 			if (exists)
 			{
 				auto_stem.push_back(se);
-				
-
 			}
 		}
-		std::vector<BMetaEdge> smoothMEdges;
-		metaEdgeIter mei = boost::edges(*this);
-		for (; mei.first != mei.second; ++mei)
-		{//calculate third derivative for each meta edge
-			BMetaEdge *edge = &operator[](*mei.first);
-			edge->curvature = -1;//invalid
-			//firs t derivative
-			if ((edge->mEdges).size() < 15) {
-				continue;
-			}
-			unsigned int windowSize = 3;
-			std::vector<vector<float>> firstDerivatives;
-			for (int i = 3; i < (edge->mVertices).size(); i+=3) {
-				float xDiff = (&mSkeleton)->operator[]((edge->mVertices)[i]).x() - (&mSkeleton)->operator[]((edge->mVertices)[i - 3]).x();
-				float yDiff = (&mSkeleton)->operator[](edge->mVertices[i]).y() - (&mSkeleton)->operator[](edge->mVertices[i - 3]).y();
-				float zDiff = (&mSkeleton)->operator[](edge->mVertices[i]).z() - (&mSkeleton)->operator[](edge->mVertices[i - 3]).z();
-				firstDerivatives.push_back({ xDiff,yDiff,zDiff });
-			}
-			std::vector<vector<float>> secondDerivatives;
-
-			
-			for (int i = 1; i < firstDerivatives.size(); i++) {
-				float xD = firstDerivatives[i][0] - firstDerivatives[i - 1][0];
-				float yD = firstDerivatives[i][1] - firstDerivatives[i - 1][1];
-				float zD = firstDerivatives[i][2] - firstDerivatives[i - 1][2];
-					secondDerivatives.push_back({ xD,yD,zD });
-			}
-			
-			std::vector<vector<float>> thirdDerivatives;
-			
-			for (int i = 1; i < secondDerivatives.size(); i++) {
-				float xD = secondDerivatives[i][0] - secondDerivatives[i - 1][0];
-				float yD = secondDerivatives[i][1] - secondDerivatives[i - 1][1];
-				float zD = secondDerivatives[i][2] - secondDerivatives[i - 1][2];
-				thirdDerivatives.push_back({ xD,yD,zD });
-			}
-			
-			
-			float sumD = 0;
-			for (vector<float> vec : thirdDerivatives) {
-				sumD += sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
-			}
-			edge->curvature = sumD / thirdDerivatives.size();
-			std::cout << "sumD is " << sumD << std::endl;
-			std::cout << "thirdDerivatives.size() is " << thirdDerivatives.size() << std::endl;
-
-			std::cout << "curvature " << edge->curvature << std::endl;
-			if (edge->curvature < 1.5) {
-				smoothMEdges.push_back(*edge);
-				for (RootAttributes skelEdge : edge->mEdges) {
-					
-					testVBO.push_back(skelEdge.v0id);
-					testVBO.push_back(skelEdge.v1id);
-
-				}
-			}
-
-		}
-		showTest = true;
 	}
 
 	

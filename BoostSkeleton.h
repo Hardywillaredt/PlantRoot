@@ -215,7 +215,8 @@ namespace Roots
 	public:
 		
 		/*
-		Finds the euclidean bounds of the skeleton and stores them in the class variables
+		Finds the 
+		bounds of the skeleton and stores them in the class variables
 		*/
 		void findBounds();
 

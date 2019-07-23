@@ -15,7 +15,13 @@ Point3d::Point3d(float ax, float ay, float az, float thickness, float width, int
 	p[2] = az;
 	p[3] = thickness;
 	p[4] = width + 0.0000001;
-	p[5] = thickness / width;
+	if (p[4] != 1000) {
+		p[5] = thickness / width;
+	}
+	else {
+		p[5] = 0;
+	}
+	
 	id = index;
 }
 

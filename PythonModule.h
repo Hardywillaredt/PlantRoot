@@ -47,6 +47,8 @@ BOOST_PYTHON_MODULE(RootsTool)
 		;
 
 	class_<BMetaGraph>("mgraph")
+		.def("saveFairedSkeleton",&BMetaGraph::saveFairedSkeleton)
+		.def("FindSmoothCurves",&BMetaGraph::FindSmoothCurves)
 		.def("setDisplayBranch",&BMetaGraph::setDisplayBranch)
 		.def("sorghumBranchOperation",&BMetaGraph::sorghumBranchOperation)
 		.def("setSorghumBranchParameters", &BMetaGraph::setSorghumBranchParameters)

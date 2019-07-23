@@ -147,7 +147,8 @@ namespace Roots
 	{
 		std::vector<SkelVert> mVertices;
 		std::vector<RootAttributes> mEdges;
-		float averageThickness, averageWidth, mLength;
+		float sinuosity = -1;
+		float averageThickness, averageWidth, mLength,averageRatio;
 		bool isBridge;
 		bool isSelected;
 		int instanceId;
@@ -504,7 +505,6 @@ namespace Roots{
 
 		bool pickNewViewCenter(int mouseX, int mouseY);
 		void changeRotationSpeed(bool increase);
-		void runSorghumAlgorithm();
 
 
 	private:
@@ -577,6 +577,8 @@ namespace Roots{
 		int loadFromLines(std::vector<std::string> &lines, int startingLine);
 
 		void saveToFile(std::string filename);
+		void saveFairedSkeleton(std::string filename);
+		BSkeleton BMetaGraph::fairSkeleton(BSkeleton skel, int iterationRound);
 		/*
 		External save operation, only save functionality for this class.
 		Inserts this metagraph as a string with a ply-style header into the provided ostream.
@@ -749,6 +751,7 @@ namespace Roots{
 		within the MST
 		*/
 		void FindStemOperation(float lowThreshold);
+		void FindSmoothCurves(float maxCurvature,float tortuosity, float ratioRatio,float maxLength);
 		void sorghumBranchOperation();
 		float getEdgeEuclidLength(SkelEdge srcId, BSkeleton *skel);
 		float getVertThickness(SkelVert srcId, BSkeleton *skel);
