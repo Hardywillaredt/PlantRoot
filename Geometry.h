@@ -66,31 +66,7 @@ public:
 	{
 		return p[0];
 	}
-	//void fairX(float x1, float x2, float x, int i) {
-	//	if (i % 2 == 0) {
-	//		p[0] = (1-lambdaEven)*x+lambdaEven*(x1 + x2) / 2;
-	//	}
-	//	else {
-	//		p[0]= (1 - lambdaOdd)*x + lambdaOdd * (x1 + x2) / 2;
-	//	}
-	//	
-	//}
-	//void fairY(float y1, float y2,float y, int i) {
-	//	if (i % 2 == 0) {
-	//		p[1] = (1 - lambdaEven)*y + lambdaEven * (y1 +y2) / 2;
-	//	}
-	//	else {
-	//		p[1] = (1 - lambdaOdd)*y + lambdaOdd * (y1 + y2) / 2;
-	//	}
-	//}
-	//void fairZ(float z1, float z2, float z, int i) {
-	//	if (i % 2 == 0) {
-	//		p[2] = (1 - lambdaEven)*z + lambdaEven * (z1 + z2) / 2;
-	//	}
-	//	else {
-	//		p[2] = (1 - lambdaOdd)*z + lambdaOdd * (z1 +z2) / 2;
-	//	}
-	//}
+
 	float y()
 	{
 		return p[1];

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <thread>
 #include<cmath>
+
 typedef int FaceI;
 
 namespace
@@ -289,6 +290,7 @@ namespace Roots
 		isSelected = false;
 		connectedComponent = -1;
 		connectedPrimaryNode = -1;
+		clusterId = -1;
 		instanceId = instanceCounter;
 		++instanceCounter;
 		for (int i = 0; i < mVertices.size() - 1; ++i)
@@ -782,6 +784,7 @@ namespace Roots
 		}
 		return;
 	}
+	
 
 	std::vector<MetaFace> MetaFace::findMetaFaces(std::vector<Face> &allFaces)
 	{
@@ -984,6 +987,7 @@ namespace Roots
 
 	void BMetaGraph::loadFromFile(std::string filename)
 	{
+		clock_t tStart = clock();
 		Initialize();
 		sorghum.getFilename(filename);
 		std::cout<<"load from file "<< sorghum.inFile<<std::endl;
@@ -1022,6 +1026,7 @@ namespace Roots
 		{
 			alphaMesh.recenter((mSkeleton.mCenter - mSkeleton.originalCenter).p);
 		}
+		printf("Time taken: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
 	}
 
 
@@ -2493,6 +2498,15 @@ namespace Roots
 		testVBO.clear();
 		std::vector<BMetaEdge> smoothMEdges;
 		metaEdgeIter mei = boost::edges(*this);
+		std::vector<Cluster> clusters;
+		unsigned int id = 0;
+		vector<vector<double>> vec,vec2;
+		vec.push_back({ 3,0,2 });
+		vec.push_back({ 2,0,-2 });
+		vec.push_back({ 0,1,1 });
+		int count = 0;
+		std::ofstream filestream;
+		filestream.open("test.txt");
 		for (; mei.first != mei.second; ++mei)
 		{//calculate third derivative for each meta edge
 			BMetaEdge *edge = &operator[](*mei.first);
@@ -2501,9 +2515,9 @@ namespace Roots
 			//std::cout << "sinuosity is " << edge->sinuosity << " length is " << edge->mLength << "averageRatio is " << edge->averageRatio << std::endl;
 			int size = edge->mVertices.size();
 			//both are end points
-			
+
 			if (size > 0) {
-				if ((boost::degree((edge->mVertices)[0], mSkeleton) == 1) && (boost::degree((edge->mVertices)[size - 1],mSkeleton) == 1)) {
+				if ((boost::degree((edge->mVertices)[0], mSkeleton) == 1) && (boost::degree((edge->mVertices)[size - 1], mSkeleton) == 1)) {
 					continue;
 				}
 			}
@@ -2511,8 +2525,8 @@ namespace Roots
 			if (size > 4) {
 				//calculate curvature using formula from wikipedia
 				std::vector<std::vector<float>> firstD;
-				
-				for (int i =1; i < size - 1; i++) {
+
+				for (int i = 1; i < size - 1; i++) {
 					Point3d pPrev = mSkeleton.operator[]((edge->mVertices)[i - 1]);
 					Point3d p = mSkeleton.operator[](edge->mVertices[i]);
 					Point3d pNext = mSkeleton.operator[](edge->mVertices[i + 1]);
@@ -2521,13 +2535,13 @@ namespace Roots
 					RootAttributes edgeA1 = mSkeleton.operator[](e1);
 					RootAttributes edgeA2 = mSkeleton.operator[](e2);
 					//weighted first derivative
-					float xprime = ((p.x() - pPrev.x())/ edgeA1.euclidLength *edgeA1.euclidLength + (pNext.x() - p.x()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float xprime = ((p.x() - pPrev.x()) / edgeA1.euclidLength *edgeA1.euclidLength + (pNext.x() - p.x()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
 					float yprime = ((p.y() - pPrev.y()) / edgeA1.euclidLength *edgeA1.euclidLength + (pNext.y() - p.y()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
 					float zprime = ((p.z() - pPrev.z()) / edgeA1.euclidLength *edgeA1.euclidLength + (pNext.z() - p.z()) / edgeA2.euclidLength*edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
 					firstD.push_back({ xprime,yprime,zprime });
 				}
 				//calculate second derivatives
-				
+
 				std::vector<std::vector<float>> secondD;
 				for (int j = 2; j < size - 2; j++) {
 					Point3d pPrev = mSkeleton.operator[]((edge->mVertices)[j - 1]);
@@ -2538,26 +2552,22 @@ namespace Roots
 					RootAttributes edgeA1 = mSkeleton.operator[](e1);
 					RootAttributes edgeA2 = mSkeleton.operator[](e2);
 					//weighted first derivative
-					float xprime2=((firstD[j-1][0]-firstD[j-2][0])/ edgeA1.euclidLength *edgeA1.euclidLength+(firstD[j][0] - firstD[j-1 ][0])/ edgeA2.euclidLength *edgeA2.euclidLength)/ (edgeA1.euclidLength + edgeA2.euclidLength);
-					float yprime2= ((firstD[j-1][1] - firstD[j - 2][1]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j ][1] - firstD[j-1][1]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
-					float zprime2= ((firstD[j-1][2] - firstD[j - 2][2]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j ][2] - firstD[j-1][2]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float xprime2 = ((firstD[j - 1][0] - firstD[j - 2][0]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j][0] - firstD[j - 1][0]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float yprime2 = ((firstD[j - 1][1] - firstD[j - 2][1]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j][1] - firstD[j - 1][1]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
+					float zprime2 = ((firstD[j - 1][2] - firstD[j - 2][2]) / edgeA1.euclidLength *edgeA1.euclidLength + (firstD[j][2] - firstD[j - 1][2]) / edgeA2.euclidLength *edgeA2.euclidLength) / (edgeA1.euclidLength + edgeA2.euclidLength);
 					secondD.push_back({ xprime2,yprime2,zprime2 });
 				}
-				
-				
 				float overallCurv = 0;
 				for (int i = 2; i < size - 2; i++) {
-					float k = sqrt(pow(secondD[i-2][2] * firstD[i-2][1] - secondD[i-2][1] * firstD[i-2][2], 2) + pow(secondD[i-2][0] * firstD[i-2][2] - secondD[i-2][2] * firstD[i-2][0], 2) + pow(secondD[i-2][1] * firstD[i-2][0] - secondD[i-2][0] * firstD[i-2][1], 2));
-					k /= pow(pow(firstD[i-2][0], 2) + pow(firstD[i-2][1], 2) + pow(firstD[i-2][2], 2), 1.5);
+					float k = sqrt(pow(secondD[i - 2][2] * firstD[i - 2][1] - secondD[i - 2][1] * firstD[i - 2][2], 2) + pow(secondD[i - 2][0] * firstD[i - 2][2] - secondD[i - 2][2] * firstD[i - 2][0], 2) + pow(secondD[i - 2][1] * firstD[i - 2][0] - secondD[i - 2][0] * firstD[i - 2][1], 2));
+					k /= pow(pow(firstD[i - 2][0], 2) + pow(firstD[i - 2][1], 2) + pow(firstD[i - 2][2], 2), 1.5);
 					mSkeleton.operator[](edge->mVertices[i]).curvature = k;
 					overallCurv += k;
 				}
 				overallCurv /= (size - 2);
 				edge->curvature = overallCurv;
-				//std::cout << "overallCurv is " << overallCurv << std::endl;
-				
 			}
-			if (edge->curvature > maxCurvature || edge -> curvature == -1) {
+			if (edge->curvature > maxCurvature || edge->curvature == -1) {
 				continue;
 			}
 			float edgeLength = edge->mLength;
@@ -2571,11 +2581,74 @@ namespace Roots
 			if (edge->averageRatio > ratioRatio) {
 				continue;
 			}
-			for (RootAttributes skelEdge : edge->mEdges) {
-				testVBO.push_back(skelEdge.v0id);
-				testVBO.push_back(skelEdge.v1id);
+			//if both ends are on teh stem, exclude it
+			if (std::find(autoStemVBO.begin(), autoStemVBO.end(), edge->mVertices[0]) != autoStemVBO.end() \
+				&& (std::find(autoStemVBO.begin(), autoStemVBO.end(), edge->mVertices[size - 1]) != autoStemVBO.end())) {
+				continue;
 			}
+			Cluster cl = Cluster(edge->mVertices,edge, edge->mLength, id, &mSkeleton);
+			clusters.push_back(cl);
+			id++;
 		}
+		
+		vector<Cluster> C=clusters;
+		cout << "# clusters is " << C.size() << endl;
+		vector<Cluster> nextC;
+		bool mergable = true;
+		//while (mergable) {
+		//	mergable = false;
+		//	for (int i = 0; i < C.size() - 1; i++) {
+		//		double min = 100000;
+		//		Cluster c;
+		//		int  erasedC=-1;
+		//		for (int j = i + 1; j < C.size(); j++) {
+		//			pair<double, Cluster> m = merge(C[i], C[j]);
+		//			if (m.first!=-1) {
+		//				Cluster mm = m.second;
+		//				if (mm.fittingError <min) {
+		//					min = mm.fittingError;
+		//					c = mm;
+		//					erasedC = j;
+		//				}
+		//			}
+		//		}
+		//		if (min!=100000) {
+		//			C.erase(C.begin()+erasedC);
+		//			C[i] = c;
+		//			mergable = true;
+		//			for (SkelVert v : c.crucialP) {
+		//				Point3d p = (&mSkeleton)->operator[](v);
+		//				filestream << p.x() << " " << p.y() << " " << p.z() << endl;
+		//			}
+		//			cout << "fittingE " << c.fittingError << " " << "length " << c.skeletonLength << endl;
+		//			filestream << "coeff" << endl;
+		//			for (int i = 0; i < 3; i++) {
+		//				filestream <<c.xCoeff(i, 0) << " ";
+		//			}
+		//			for (int i = 0; i < 3; i++) {
+		//				filestream << c.yCoeff(i, 0) << " ";
+		//			}
+		//			for (int i = 0; i < 3; i++) {
+		//				filestream << c.zCoeff(i, 0) << " ";
+		//			}
+		//			filestream << endl;
+		//			for (double t : c.tPara) {
+		//				double x = c.xCoeff[0] *pow(t ,2) + c.xCoeff[1] * t + c.xCoeff[2];
+		//				double y = c.yCoeff[0] * pow(t, 2) + c.yCoeff[1] * t + c.yCoeff[2];
+		//				double z= c.zCoeff[0] * pow(t, 2) + c.zCoeff[1] * t + c.zCoeff[2];
+		//				filestream << x << " " << y << " " << z << endl;
+		//			}
+		//			filestream << "end" << endl;
+		//		}
+
+		//		if (i == 2) {
+		//			mergable = false;
+		//			break;
+
+		//		}
+		//	}
+		//}
+		cout << "here" << endl;
 		std::cout << "testVBO.size() is " << testVBO.size() << std::endl;
 		std::cout << "find smooth curves end" << std::endl;
 	}
@@ -2939,8 +3012,349 @@ namespace Roots
 			}
 		}
 	}
+	pair<vector<vector<pair<double,BMetaEdge>>>,double> BMetaGraph::getOverlapLength(Cluster c1, Cluster c2) {
+		//projection from c2 to c1
+		pair<vector<vector<pair<double,BMetaEdge>>>, double> ans;
+		vector<vector<pair<double,BMetaEdge>>> allPara;
+		for (int i = 0; i < c2.crucialP.size(); i++) {
+			vector<pair<double,BMetaEdge>> v;
+			for (int j = 0; j < c2.crucialP[i].size(); j++) {
+				Eigen::VectorXd Dt = getDt(c1.xCoeff, c1.yCoeff, c1.zCoeff, c2.crucialP[i][j], &mSkeleton);
+				Eigen::Vector4d deri = getDerivativeFunc(Dt);
+				double t = getOptimalT(deri, Dt);
+				v.push_back({ t,c2.mEdges[i] });
+			}
+			allPara.push_back(v);
+		}
+		double sum = 0;
+		for (int i = 0; i < allPara.size(); i++) {
+			for (int j = 1; j < allPara[i].size(); j++) {
+				vector<double> v = {allPara[i][j].first,allPara[i][j-1].first };
+				sum += largestOverlap(v, c2.tPara);
+			}
+		}
+		ans = { allPara,sum };
+		return ans;
+	}
+	double BMetaGraph::largestOverlap(vector<double> v1, vector<vector<double>> v2) {
+		double length = 0;
+		for (int i = 0; i < v2.size(); i++) {
+			for (int j = 1; j < v2.size(); j++) {
+				if (v1[0] <= v1[1]) {
+					length += max(0.0, (min(max(v2[i][j], v2[i][j-1]), v1[1]) - max(min(v2[i][j], v2[i][j-1]), v1[0])));
+				}
+				else {
+					length += max(0.0, min(max(v2[i][j], v2[i][j-1]), v1[0]) - max(min(v2[i][j], v2[i][j-1]), v1[1]));
+				}
+			}
+		}
+		
+		return length;
+	}
+	double BMetaGraph::closestDist(Roots::Cluster c1, Roots::Cluster c2) {
+		double minDist = 10000;
+		for (int i = 0; i < c1.crucialP.size();i++) {
+			for (int j = 0; j < c1.crucialP[i].size(); j++) {
+				Point3d p1 = (&mSkeleton)->operator[](c1.crucialP[i][j]);
+				for (int k = 0; k < c2.crucialP.size(); k++) {
+					for (int l = 0; l < c2.crucialP[k].size(); l++) {
+						Point3d p2= (&mSkeleton)->operator[](c2.crucialP[k][l]);
+						double dist = sqrt(pow(p1.x() - p2.x(), 2) + pow(p1.y() - p2.y(), 2) + pow(p1.z() - p2.z(), 2));
+						if ( dist< minDist) {
+							minDist = dist;
+						}
+					}
+				}
+			}
+		}
 
+	}
+	pair<double,Cluster> BMetaGraph::merge(Roots::Cluster c1, Roots::Cluster c2) {
+		Cluster c = Cluster();
+		double dist = closestDist(c1, c2);
+		if (dist > 70) {//too far away, dismiss it or c1/c2 already has been merged
+			return { -1,c };
+		}
+		pair<vector<vector<pair<double,BMetaEdge>>>, double> p1 = getOverlapLength(c1, c2);//p1.first is array of parameters of c2 after projection on c1 
+		pair<vector<vector<pair<double,BMetaEdge>>>, double> p2 = getOverlapLength(c2, c1);
+		if (p1.second > 0.0||p2.second>0.0) {//overlap, eliminate
+			return {-1,c };
+		}
+		//now sort the merged clusters
+		vector<vector<pair<double, BMetaEdge>>> c2P;
+		vector<vector<pair<double, BMetaEdge>>> c1P;
+		for (int i = 0; i < c2.tPara.size(); i++) {
+			vector<pair<double, BMetaEdge>> v;
+			for (int j = 0; j < c2.tPara[i].size(); j++) {
+				v.push_back({ c2.tPara[i][j],c2.mEdges[i] });
+			}
+			c2P.push_back(v);
+		}
+		for (int i = 0; i < c1.tPara.size(); i++) {
+			vector<pair<double, BMetaEdge>> v;
+			for (int j = 0; j < c1.tPara[i].size(); j++) {
+				v.push_back({ c1.tPara[i][j],c1.mEdges[i] });
+			}
+			c1P.push_back(v);
+		}
+		c2P.insert(c2P.end(), p2.first.begin(), p2.first.end());
+		c1P.insert(c1P.end(), p1.first.begin(), p1.first.end());
+		selectionSort(c2P,c2P.size());
+		selectionSort(c1P,c1P.size());
+		bool sameOrder =true;
+		bool sameOrderR = true;
+		for (int i = 0; i < c1P.size(); i++) {
+			if (c1P[i][0].second.instanceId != c2P[i][0].second.instanceId) {
+				sameOrder = false;
+			}
+		}
+		for (int i = 0; i < c2P.size(); i++) {
+			if (c1P[i][0].second.instanceId != c2P[i][0].second.instanceId) {
+				sameOrderR = false;
+			}
+		}
+		if (!sameOrder || !sameOrderR) {
+			return { -1,c };
+		}
+		vector<vector<SkelVert>> verts;
+		vector<BMetaEdge> edges;
+		vector<vector<double>> para;
+		vector<Eigen::Vector3d> coeff,coeff1,coeff2;
+		coeff1 = getCoeff(c1P);
+		coeff2 = getCoeff(c2P);
+		double fittingE;
+		double fittingE1 = calculateAvgSqE(coeff1[0], coeff1[1], coeff1[2], c1P);
+
+		double fittingE2 = calculateAvgSqE(coeff2[0], coeff2[1], coeff2[2], c2P);
+
+		double length = c1.skeletonLength + c2.skeletonLength;
+		if (fittingE1 < fittingE2) {
+			fittingE = fittingE1;
+			coeff = coeff1;
+			for (int i = 0; i < c1P.size(); i++) {
+				vector<SkelVert> v;
+				vector<double> t;
+				for (int j = 0; j < c1P[i].size(); j++) {
+					t.push_back(c1P[i][j].first);
+					v.push_back(c1P[i][j].second.mVertices[i]);
+				}
+				verts.push_back(v);
+				para.push_back(t);
+				edges.push_back(c1P[i][0].second);
+			}
+		}
+		else {
+			fittingE = fittingE2;
+			coeff = coeff2;
+			for (int i = 0; i < c2P.size(); i++) {
+				vector<SkelVert> v;
+				vector<double> t;
+				for (int j = 0; j < c2P[i].size(); j++) {
+					t.push_back(c2P[i][j].first);
+					v.push_back(c2P[i][j].second.mVertices[i]);
+				}
+				verts.push_back(v);
+				para.push_back(t);
+				edges.push_back(c2P[i][0].second);
+			}
+		}
+		Cluster cc = Cluster(para, verts, edges, length, fittingE, coeff, min(c1.id, c2.id), &mSkeleton);
+		return {fittingE,cc };
+	}
+	vector<Eigen::Vector3d> BMetaGraph::getCoeff(vector<vector<pair<double, BMetaEdge>>> v) {
+		Eigen::Vector3d xCoeff, yCoeff, zCoeff;
+		int numT = 0;
+		for (int i = 0; i < v.size(); i++) {
+			numT += v[i].size();
+		}
+		Eigen::MatrixXd A(numT,3);
+		int index = 0;
+		for (int i = 0; i <v.size(); i++) {
+			for (int k = 0; k < v[i].size(); k++) {
+				for (int j = 0; j < 3; j++) {
+					A(index, j) = pow(v[i][k].first, 2 - j);
+				}
+				index++;
+			}
+		}
+		Eigen::VectorXd Bx(numT), By(numT), Bz(numT);
+		int index1 = 0;
+		for (int i = 0; i < v.size(); i++) {
+			for (int j = 0; j < v[i].size(); j++) {
+				Point3d p = (&mSkeleton)->operator[]((v[i][j].second).mVertices[j]);
+				Bx(index1, 0) = p.x();
+				By(index1, 0) = p.y();
+				Bz(index1, 0) = p.z();
+				index1++;
+			}
+		}
+		xCoeff = (((A.transpose())*A).inverse())*A.transpose()*Bx;
+		yCoeff = (((A.transpose())*A).inverse())*A.transpose()*By;
+		zCoeff = (((A.transpose())*A).inverse())*A.transpose()*Bz;
+		vector<Eigen::Vector3d> ans = { xCoeff, yCoeff, zCoeff };
+		return ans;
+	}
+	Eigen::VectorXd BMetaGraph::getDt(Eigen::Vector3d vx, Eigen::Vector3d vy, Eigen::Vector3d vz, SkelVert id,BSkeleton* mSkeleton) {
+		Eigen::VectorXd ans(5);
+		float x = mSkeleton->operator[](id).x();
+		float y = mSkeleton->operator[](id).y();
+		float z = mSkeleton->operator[](id).z();
+		ans(0, 0) = vx(0, 0)*vx(0, 0) + vy(0, 0)*vy(0, 0) + vz(0, 0)*vz(0, 0);
+		ans(1, 0) = 2*(vx(0, 0)*vx(1, 0) + vy(0, 0)*vy(1, 0) + vz(0, 0)*vz(1, 0));
+		ans(2, 0) = vx(1, 0)*vx(1, 0) + 2 * vx(0, 0)*vx(2, 0) - 2 * x*vx(0, 0)+ vy(1, 0)*vy(1, 0) + 2 * vy(0, 0)*vy(2, 0) - 2 * y*vy(0, 0)\
+			+vz(1, 0)*vz(1, 0) + 2 * vz(0, 0)*vz(2, 0) - 2 * z*vz(0, 0);
+		ans(3, 0) = (2 * vx(1, 0)*vx(2, 0) - 2 * x*vx(1, 0)) + (2 * vy(1, 0)*vy(2, 0) - 2 * y*vy(1, 0)) + (2*vz(1, 0)*vx(2, 0) - 2 * x*vx(1, 0));
+		ans(4, 0) = (vx(2, 0)*vx(2, 0) + x * x - 2 * x*vx(2, 0)) + (vy(2, 0)*vy(2, 0) + y * y - 2 * y*vy(2, 0)) + (vz(2, 0)*vz(2, 0) + z * z - 2 * z*vz(2, 0));
+		return ans;
+	}
+
+	Eigen::Vector4d BMetaGraph::getDerivativeFunc(Eigen::VectorXd v) {
+		Eigen::Vector4d ans;
+		ans(0, 0) = 4 * v(0, 0);
+		ans(1, 0) = 3 * v(1, 0);
+		ans(2, 0) = 2 * v(2, 0);
+		ans(3, 0) = v(3, 0);
+		return ans;
+	}
+	double BMetaGraph::getOptimalT(Eigen::Vector4d v, Eigen::VectorXd v1) {
+	//solution of cubic equation from Cardano's Formula https://proofwiki.org/wiki/Cardano%27s_Formula
+		double q = (3 * v(0, 0)*v(2, 0) - v(1, 0)*v(1, 0))/(9*v(0,0)*v(0,0));
+		double r = (9 * v(0, 0)*v(1, 0)*v(2, 0) - 27 * v(0, 0)*v(0, 0)*v(3, 0) - 2 * pow(v(1, 0), 3)) / (54 * pow(v(0, 0), 3));
+		double determinant = pow(q, 3) + pow(r, 2);
+		int numR = 0;
+		double root = 0;
+		double root1R, root2R, root3R;
+		if (determinant > 0) {//only one root is real
+			double s = pow(r + sqrt(determinant), 1 / 3);
+			double t = pow(r - sqrt(determinant), 1 / 3);
+			root = s + t - v(1, 0) / (3 * v(0, 0));
+		}
+		else if (determinant == 0) {//two different roots
+			double s = pow(r, 1 / 3);
+			double t = pow(r, 1 / 3);
+			root1R=s+t- v(1, 0) / (3 * v(0, 0));
+			root2R = -(s + t) / 2 - v(1, 0) / (3 * v(0, 0));
+			double min = (v1(0, 0)*pow(root1R, 4) + v1(1, 0)*pow(root1R, 3) + v1(2, 0)*pow(root1R, 2) + v1(3, 0)*pow(root1R, 1) + v1(4, 0));
+			root = root1R;
+			if ((v1(0, 0)*pow(root2R, 4) + v1(1, 0)*pow(root2R, 3) + v1(2, 0)*pow(root2R, 2) + v1(3, 0)*pow(root2R, 1) + v1(4, 0)) <min) {
+				root = root2R;
+			}
+			
+		}
+		else {//three distinct real roots
+			std::complex<double> c1 = (determinant, 0);
+			std::complex<double> c2(r, 0);
+			std::complex<double> s = pow(r + pow(c1, 0.5), 1 / 3);
+			std::complex<double> t = pow(r - pow(c1, 0.5), 1 / 3);
+			std::complex<double> root1 = s + t - v(1, 0) / (3*v(0, 0));
+			std::complex<double> coe(0, pow(3, 0.5) / 2);
+			std::complex<double> two = (2, 0);
+			std::complex<double> root2 = -(s + t) / two - v(1, 0) / (3 * v(0, 0)) + coe * (s - t);
+			std::complex<double> root3 = -(s + t) / two - v(2, 0) / (3 * v(0, 0)) - coe * (s - t);
+			root1R = root1._Val[0];
+			root2R = root2._Val[0];
+			root3R = root3._Val[0];
+			double min = (v1(0, 0)*pow(root1R, 4) + v1(1, 0)*pow(root1R, 3) + v1(2, 0)*pow(root1R, 2) + v1(3, 0)*pow(root1R, 1) + v1(4, 0));
+			root = root1R;
+			if ((v1(0, 0)*pow(root2R, 4) + v1(1, 0)*pow(root2R, 3) + v1(2, 0)*pow(root2R, 2) + v1(3, 0)*pow(root2R, 1) + v1(4, 0)) <min) {
+				root = root2R;
+			}
+			if ((v1(0, 0)*pow(root3R, 4) + v1(1, 0)*pow(root3R, 3) + v1(2, 0)*pow(root3R, 2) + v1(3, 0)*pow(root3R, 1) + v1(4, 0)) <min) {
+				root = root3R;
+			}
+		}
+		return root;
+	};
+	Cluster::Cluster() {
+		id = -1;
+	}
+	Cluster::Cluster(vector<vector<double>> tPara, std::vector<vector<SkelVert>> verts, \
+		std::vector<BMetaEdge> mEdges, float length, double fittingE, vector<Eigen::Vector3d> coeff,unsigned int id, BSkeleton* skel) {
+		this->id = id;
+		this->crucialP=verts;
+		this->skeletonLength = length;
+		this->xCoeff = coeff[0];
+		this->yCoeff = coeff[1];
+		this->zCoeff = coeff[2];
+		this->fittingError = fittingE;
+		this->tPara= tPara;
+		//this->score = this->skeletonLength - fittingError;
+	}
+
+	Cluster::Cluster(std::vector<SkelVert> verts, \
+		BMetaEdge *e, float length, unsigned int id, BSkeleton* skel) {
+		this->id = id;
+		this->crucialP.push_back(verts);
+		this->mEdges.push_back(*e);
+		vector<double> t;
+		t.push_back(0);
+		double para = 0;
+		for (RootAttributes e : e->mEdges) {
+			para += e.euclidLength;
+			t.push_back(para);
+		}
+		this->tPara.push_back(t);
+		this->skeletonLength = length;
+		Eigen::MatrixXd A(tPara[0].size(),3);
+		for (int i = 0; i < tPara[0].size(); i++) {
+			for (int j = 0; j < 3; j++) {
+				A(i, j) = pow(tPara[0][i],2-j);
+			}
+		}
+		Eigen::MatrixXd Atranspose = A.transpose();
+		Eigen::MatrixXd AtA = Atranspose * A;
+		Eigen::MatrixXd AtAInv = AtA.inverse();
+		Eigen::MatrixXd intermediate = AtAInv*Atranspose;
+		Eigen::VectorXd Bx(tPara[0].size()), By(tPara[0].size()), Bz(tPara[0].size());
+		for (int i = 0; i < verts.size(); i++) {
+			Point3d p = skel->operator[](verts[i]);
+			Bx(i, 0) = p.x();
+			By(i, 0) = p.y();
+			Bz(i, 0) = p.z();
+		}
+		this->xCoeff = intermediate*Bx;
+		
+		this->yCoeff = intermediate * By;
 	
+		this->zCoeff = intermediate * Bz;
+		//calculate total squared error
+		this->fittingError = calculateAvgSqE(skel);
+		this->score = this->skeletonLength-fittingError;
+	};
+	double Cluster::calculateAvgSqE(BSkeleton* mSkeleton) {//
+		double error = 0;
+		int num = 0;
+		for (int j = 0; j < crucialP.size(); j++) {
+			for (int i = 0; i < crucialP[j].size(); i++) {
+				double xC = xCoeff[0] * pow(tPara[j][i], 2) + xCoeff[1] * tPara[j][i] + xCoeff[2];
+				double yC = yCoeff[0] * pow(tPara[j][i], 2) + yCoeff[1] * tPara[j][i] + yCoeff[2];
+				double zC = zCoeff[0] * pow(tPara[j][i], 2) + zCoeff[1] * tPara[j][i] + zCoeff[2];
+				Point3d p = mSkeleton->operator[](crucialP[j][i]);
+				error += (pow(xC - p.x(), 2) + pow(yC - p.y(), 2) + pow(zC - p.z(), 2));
+			}
+			num += crucialP[j].size();
+		}
+		error /= num;
+		return sqrt(error);
+	}
+	double BMetaGraph::calculateAvgSqE(Eigen::Vector3d xCoeff, Eigen::Vector3d yCoeff, Eigen::Vector3d zCoeff, vector<vector<pair<double, BMetaEdge>>> v) {
+		double error = 0;
+		int sum = 0;
+		for (int i = 0; i < v.size(); i++) {
+			for (int j = 0; j < v[i].size(); j++) {
+				double xC = xCoeff[0] * pow(v[i][j].first, 2) + xCoeff[1] * v[i][j].first + xCoeff[2];
+				double yC = yCoeff[0] * pow(v[i][j].first, 2) + yCoeff[1] * v[i][j].first + yCoeff[2];
+				double zC = zCoeff[0] * pow(v[i][j].first, 2) + zCoeff[1] * v[i][j].first + zCoeff[2];
+				Point3d p = (&mSkeleton)->operator[](v[i][j].second.mVertices[j]);
+				error += ((pow(xC - p.x(), 2) + pow(yC - p.y(), 2) + pow(zC - p.z(), 2)));
+			}
+			sum += v[i].size();
+		}
+		error /= sum;
+		return sqrt(error);
+	}
+	
+
 	// Constructor. 
 	DisjointSets::DisjointSets(int n)
 	{

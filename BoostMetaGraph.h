@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <map>
+#include <iostream>
+#include <complex>
+#include <Eigen/Dense>
 #include "Sphere.h"
 #include "Mesh.h"
 #include "Sorghum.h"
@@ -155,7 +158,7 @@ namespace Roots
 		static int instanceCounter;
 		float curvature;
 		int connectedComponent;
-
+		int clusterId;
 		int connectedPrimaryNode;
 		
 
@@ -207,6 +210,24 @@ namespace Roots
 		MetaFace(std::set<int> memberFaces, std::vector<Face>& skelFaces);
 
 		static std::vector<MetaFace> findMetaFaces(std::vector<Face> &allFaces);
+	};
+
+	struct Cluster {
+		unsigned int id;
+		Eigen::Vector3d xCoeff;
+		Eigen::Vector3d yCoeff;
+		Eigen::Vector3d zCoeff;
+		vector<vector<SkelVert>> crucialP;//a vector of all points on meta edges--one vector means one meta edge
+		vector<vector<double>> tPara;//cruticalP's corresponding t parameters
+		double skeletonLength;//total length
+		std::vector<BMetaEdge> mEdges;
+		double fittingError;//square root of avg fitting error 
+		double score;
+		Cluster();//set invalid Cluster's id to -1
+		Cluster(vector<SkelVert> verts, BMetaEdge* e, float length, unsigned int id, BSkeleton* skel);//for initialization
+		Cluster(vector<vector<double>> tPara,vector<vector<SkelVert>> verts, vector<BMetaEdge> mEdges, float length, double fittingE, vector<Eigen::Vector3d> coeff, unsigned int id, BSkeleton* skel);//for merge
+		double calculateAvgSqE(BSkeleton* mSkeleton);
+		
 	};
 }
 
@@ -780,7 +801,40 @@ namespace Roots{
 		Use the vert node map to determine the connected component to which an edge belongs
 		*/
 		int GetEdgeComponent(MetaE edge);
-	};
+		double closestDist(Roots::Cluster c1, Roots::Cluster c2);//consider all points, get the closest dist
+		pair<double,Roots::Cluster> merge(Roots::Cluster c1, Roots::Cluster c2);
+		Eigen::VectorXd getDt(Eigen::Vector3d vx, Eigen::Vector3d vy, Eigen::Vector3d vz, SkelVert id, BSkeleton* mSkeleton);
+		pair<vector<vector<pair<double,BMetaEdge>>>,double> getOverlapLength(Cluster c1, Cluster c2);//pair.first contains t parameters projected from c2 to c1
+		Eigen::Vector4d getDerivativeFunc(Eigen::VectorXd v);
+		double getOptimalT(Eigen::Vector4d v, Eigen::VectorXd v1);
+		double largestOverlap(vector<double> v1, vector<vector<double>> v2);//v1 has two points, v2 is all parameters in another cluster
+		vector<Eigen::Vector3d> getCoeff(vector<vector<pair<double, BMetaEdge>>> v);
+		double calculateAvgSqE(Eigen::Vector3d xCoeff, Eigen::Vector3d yCoeff, Eigen::Vector3d zCoeff, vector<vector<pair<double, BMetaEdge>>> v);
+		void swap(vector<pair<double,BMetaEdge>> *xp, vector<pair<double, BMetaEdge>> *yp)
+		{
+			vector<pair<double,BMetaEdge>> temp = *xp;
+			*xp = *yp;
+			*yp = temp;
+		}
+		void selectionSort(vector<vector<pair<double,BMetaEdge>>> v, int n)
+		{
+			int i, j, min_idx;
+
+			// One by one move boundary of unsorted subarray  
+			for (i = 0; i < n - 1; i++)
+			{
+				// Find the minimum element in unsorted array  
+				min_idx = i;
+				for (j = i + 1; j < n; j++)
+					if (v[j][0].first < v[min_idx][0].first)
+						min_idx = j;
+
+				// Swap the found minimum element with the first element  
+				swap(&v[min_idx], &v[i]);
+			}
+		}
+
+};
 
 	struct DisjointSets
 	{
@@ -795,6 +849,7 @@ namespace Roots{
 		// Union by rank 
 		void merge(int x, int y);
 	};
+
 }
 
 typedef boost::graph_traits<Roots::BMetaGraph>::vertex_iterator vertIter;
